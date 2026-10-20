@@ -1,0 +1,45 @@
+{
+  "game": "Total War: WARHAMMER",
+  "app_id": 364360,
+  "exe": "Warhammer.exe",
+  "depots": {
+    "364361": "Executables",
+    "364362": "Data",
+    "364363": "English text (includes DLC text packs)",
+    "404010": "DLC: Chaos Warriors",
+    "404011": "DLC: Blood for the Blood God"
+  },
+  "versions": [
+    {
+      "id": "1.0.0",
+      "name": "Launch + Chaos Warriors",
+      "released": "2016-05-24",
+      "verified": true,
+      "depots": {
+        "364361": "2516464067117102635",
+        "364362": "8016606766435871385",
+        "364363": "5660112204458042940"
+      },
+      "dlc": {
+        "404010": "3432203448357961461"
+      },
+      "notes": "Verified in game without the 404010 depot; Chaos Warriors unlocked by ownership alone."
+    },
+    {
+      "id": "1.1.0",
+      "name": "Blood for the Blood God",
+      "released": "2016-06-30",
+      "verified": true,
+      "depots": {
+        "364361": "2885293963745895458",
+        "364362": "2140242816834270221",
+        "364363": "8976652429050875810"
+      },
+      "dlc": {
+        "404010": "7265240474140421492",
+        "404011": "4709372599327710244"
+      },
+      "notes": "Verified in game: exe 1.1.0.0, modified.log empty with Blood packs present."
+    }
+  ]
+}
