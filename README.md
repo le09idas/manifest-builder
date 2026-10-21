@@ -26,6 +26,10 @@ python -m twbuild status
 # will do and asks first (--yes skips the question).
 python -m twbuild switch 1.2.0 --username <steam user>
 
+# Delete the game folder (only folders twbuild built; asks first; saves in
+# %APPDATA% are not touched)
+python -m twbuild remove
+
 # Build from scratch
 python -m twbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
 

@@ -2,6 +2,9 @@
 
 import ctypes
 import json
+import os
+import shutil
+import stat
 from datetime import datetime
 from pathlib import Path
 
@@ -88,6 +91,25 @@ def find_builds(library, catalog_key):
         return []
     return sorted(d for d in library.iterdir()
                   if d.is_dir() and (_state_or_unreadable(d) or {}).get("catalog") == catalog_key)
+
+
+def remove_build(folder):
+    """Delete a game folder and everything in it, but only one twbuild built.
+
+    Raises ValueError for a drive root or a folder without twbuild.json.
+    """
+    folder = Path(folder).resolve()
+    if folder == Path(folder.anchor):
+        raise ValueError(f"{folder} is a drive root; refusing to delete it.")
+    if not (folder / STATE_FILE).is_file():
+        raise ValueError(f"{folder} has no {STATE_FILE}, so twbuild didn't build it; "
+                         "refusing to delete it.")
+
+    def clear_readonly(func, path, _exc):
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+    shutil.rmtree(folder, onexc=clear_readonly)
 
 
 def is_safe_to_build_into(folder, catalog):

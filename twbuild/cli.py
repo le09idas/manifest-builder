@@ -1,4 +1,4 @@
-"""Command line: list, use, status, switch, build, verify."""
+"""Command line: list, use, status, switch, remove, build, verify."""
 
 import argparse
 import os
@@ -11,8 +11,8 @@ from .catalog import (DEFAULT_CATALOG, catalog_key, dlc_in, find_version, load_c
 from .depots import DEFAULT_DD, expected_files
 from .install import build, check_can_download
 from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, find_builds,
-                      folder_status, is_safe_to_build_into, read_state, set_current_folder,
-                      verify, write_state)
+                      folder_status, is_safe_to_build_into, read_state, remove_build,
+                      set_current_folder, verify, write_state)
 
 
 def dest_for(catalog, opts):
@@ -156,6 +156,34 @@ def cmd_switch(catalog, opts):
     finish_build(catalog, version, folder, opts)
 
 
+def cmd_remove(catalog, opts):
+    folder = dest_for(catalog, opts)
+    info = folder_status(folder, catalog)
+    if not info["exists"]:
+        sys.exit(f"{folder} doesn't exist; nothing to remove.")
+    rec = info["record"]
+    if rec is None:
+        sys.exit(f"{folder} has no twbuild.json, so twbuild didn't build it; refusing to "
+                 "delete it. Delete it yourself if you're sure.")
+
+    vid = rec.get("version")
+    held = version_label(catalog, vid) if vid else "unknown version"
+    print(f"Remove {folder}")
+    print(f"  holds {held} ({rec.get('status', '?')}), {format_size(info['size'])}")
+    print("This deletes the folder and everything in it, including anything you added "
+          "(e.g. mods). Saves and settings in %APPDATA% are not touched.")
+    if not (opts.yes or confirm("\nDelete it?")):
+        sys.exit("Cancelled; nothing was deleted.")
+    try:
+        remove_build(folder)
+    except ValueError as e:
+        sys.exit(str(e))
+    print(f"Removed {folder}.")
+    if not opts.dest:
+        print("It was the current game folder; `switch <version>` reinstalls into it, "
+              "or pick another with `use`.")
+
+
 def cmd_build(catalog, opts):
     version = find_version(catalog, opts.version)
     finish_build(catalog, version, dest_for(catalog, opts), opts)
@@ -225,6 +253,10 @@ def main():
     s = sub.add_parser("status", help="show what the game folder holds and whether it's ready")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
 
+    s = sub.add_parser("remove", help="delete a game folder twbuild built (asks first)")
+    s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
+    s.add_argument("--yes", action="store_true", help="don't ask before deleting")
+
     for name, helptext in (("switch", "turn the game folder into another version"),
                            ("build", "build a version into a folder without asking first"),
                            ("verify", "check a folder against a version")):
@@ -244,5 +276,5 @@ def main():
     opts = p.parse_args()
     catalog = load_catalog(opts.catalog)
     commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
-                "build": cmd_build, "verify": cmd_verify}
+                "remove": cmd_remove, "build": cmd_build, "verify": cmd_verify}
     commands[opts.command](catalog, opts)
