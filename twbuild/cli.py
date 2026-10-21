@@ -1,4 +1,4 @@
-"""Command line: list, use, status, build, verify."""
+"""Command line: list, use, status, switch, build, verify."""
 
 import argparse
 import os
@@ -9,9 +9,10 @@ from . import __doc__ as DESCRIPTION
 from .catalog import (DEFAULT_CATALOG, catalog_key, dlc_in, find_version, load_catalog,
                       select_depots)
 from .depots import DEFAULT_DD, expected_files
-from .install import build
+from .install import build, check_can_download
 from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, find_builds,
-                      folder_status, read_state, set_current_folder, verify, write_state)
+                      folder_status, is_safe_to_build_into, read_state, set_current_folder,
+                      verify, write_state)
 
 
 def dest_for(catalog, opts):
@@ -103,9 +104,65 @@ def cmd_status(catalog, opts):
             print(f"  {d.name}: {r.get('version', '?')} ({r.get('status', '?')})")
 
 
+def confirm(question):
+    """Ask a yes/no question; anything but y/yes (or no terminal) means no."""
+    try:
+        return input(f"{question} [y/N] ").strip().lower() in ("y", "yes")
+    except EOFError:
+        return False
+
+
+def cmd_switch(catalog, opts):
+    version = find_version(catalog, opts.version)
+    target = version["id"]
+    folder = dest_for(catalog, opts)
+    info = folder_status(folder, catalog)
+    rec = info["record"] or {}
+    held, status = rec.get("version"), rec.get("status")
+
+    if held == target and status == "ok":
+        print(f"{folder} already holds {version_label(catalog, target)} (OK). Nothing to do.")
+        print(f"To re-check and repair it anyway, run `build {target}`.")
+        return
+    if not is_safe_to_build_into(folder, catalog):
+        sys.exit(f"{folder} has other files in it and isn't a {catalog['game']} folder; "
+                 "refusing to switch it. Pick another folder with `use` or --dest.")
+    check_can_download(opts)
+
+    fresh = not info["exists"] or info["empty"]
+    if fresh:
+        print(f"Installing {version_label(catalog, target)} into {folder}.")
+    elif status == "building" and held == target:
+        print(f"Finishing the unfinished {'switch' if rec.get('from') else 'build'} "
+              f"to {target} in {folder}.")
+    else:
+        was = held or (f"exe {info['exe_version']}" if info["exe_version"] else "unknown")
+        if status == "building":
+            was += ", unfinished"
+        print(f"Switching {folder}\n  from {was}\n  to   {version_label(catalog, target)}")
+    print("This downloads the whole game (20+ GB)." if fresh else
+          "This downloads most of the game again (20+ GB) and replaces the files in that folder.")
+
+    ids = [v["id"] for v in catalog["versions"]]
+    previous = rec.get("from") if status == "building" else held
+    if previous in ids and ids.index(target) < ids.index(previous):
+        print(f"\nNote: {target} is older than {previous}. Saves made in newer versions "
+              "usually won't load in older ones, and all versions share one save folder. "
+              "Back up %APPDATA%\\The Creative Assembly\\Warhammer first.")
+
+    if not (opts.yes or confirm("\nContinue?")):
+        sys.exit("Cancelled; nothing was changed.")
+    opts.base = None
+    finish_build(catalog, version, folder, opts)
+
+
 def cmd_build(catalog, opts):
     version = find_version(catalog, opts.version)
-    dest = dest_for(catalog, opts)
+    finish_build(catalog, version, dest_for(catalog, opts), opts)
+
+
+def finish_build(catalog, version, dest, opts):
+    """Run build, print what to do next, and exit with its result."""
     ok = build(catalog, version, dest, opts)
     if ok:
         print(f"\nDone. With Steam running, launch {dest / catalog['exe']}")
@@ -168,7 +225,8 @@ def main():
     s = sub.add_parser("status", help="show what the game folder holds and whether it's ready")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
 
-    for name, helptext in (("build", "build a version into a folder"),
+    for name, helptext in (("switch", "turn the game folder into another version"),
+                           ("build", "build a version into a folder without asking first"),
                            ("verify", "check a folder against a version")):
         s = sub.add_parser(name, help=helptext)
         s.add_argument("version", help="version id from the catalog, e.g. 1.1.0")
@@ -177,12 +235,14 @@ def main():
                        help="'all' (default), 'none', or comma-separated DLC depot ids")
         s.add_argument("--username", help="Steam username (password is remembered after first login)")
         s.add_argument("--qr", action="store_true", help="log in with a QR code instead")
+        if name == "switch":
+            s.add_argument("--yes", action="store_true", help="don't ask before downloading")
         if name == "build":
             s.add_argument("--from", dest="base", type=folder_arg,
                            help="copy this existing build first, so only changes are downloaded")
 
     opts = p.parse_args()
     catalog = load_catalog(opts.catalog)
-    commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "build": cmd_build,
-                "verify": cmd_verify}
+    commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
+                "build": cmd_build, "verify": cmd_verify}
     commands[opts.command](catalog, opts)

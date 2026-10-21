@@ -10,14 +10,20 @@ from .library import (check_exe_version, clean, is_safe_to_build_into, read_stat
                       write_state)
 
 
-def build(catalog, version, dest, opts):
-    """Build version into dest. Returns True if the result verifies."""
+def check_can_download(opts):
+    """Exit with a clear message if DepotDownloader or a Steam login is missing."""
     dd = Path(opts.dd)
     if not dd.exists():
         sys.exit(f"DepotDownloader not found at {dd}. See README.md.")
     if not (opts.username or opts.qr):
         # Without these DepotDownloader logs in anonymously, which can't download the game.
         sys.exit("Steam login needed: add --username <your steam user> (or --qr).")
+
+
+def build(catalog, version, dest, opts):
+    """Build version into dest. Returns True if the result verifies."""
+    check_can_download(opts)
+    dd = Path(opts.dd)
 
     print(f"Building {catalog['game']} {version['id']} ({version['name']}) -> {dest}")
     if not version.get("verified"):

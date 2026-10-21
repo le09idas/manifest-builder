@@ -22,6 +22,10 @@ python -m twbuild list
 # What's in the game folder, and is it ready to play? (no login needed)
 python -m twbuild status
 
+# Turn the game folder into another version, forward or back. Says what it
+# will do and asks first (--yes skips the question).
+python -m twbuild switch 1.2.0 --username <steam user>
+
 # Build from scratch
 python -m twbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
 
