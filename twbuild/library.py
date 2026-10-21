@@ -193,6 +193,7 @@ def verify(dest, expected):
         for p in sorted(items):
             print(f"  {label}: {p}")
     ok = not (missing or wrong or extra)
-    print(f"  {len(expected)} files expected, {len(actual)} present -> "
+    present = sum(1 for p in actual if p not in KEEP)
+    print(f"  {len(expected)} files expected, {present} present -> "
           + ("OK" if ok else "PROBLEMS FOUND"))
     return ok

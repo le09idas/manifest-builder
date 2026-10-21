@@ -32,20 +32,35 @@ def login_args(opts):
     return args
 
 
+def _cache_dir(depot, manifest):
+    return WORK / "manifests" / f"{depot}_{manifest}"
+
+
+def _cached_dump(depot, manifest):
+    """The saved -manifest-only dump for this manifest, or None if there isn't one."""
+    out_dir = _cache_dir(depot, manifest)
+    dump = out_dir / f"manifest_{depot}_{manifest}.txt"
+    if dump.exists():
+        return dump
+    found = list(out_dir.rglob("manifest_*.txt")) if out_dir.exists() else []
+    return found[0] if found else None
+
+
 def manifest_files(dd, app_id, depot, manifest, opts):
     """Return {relative_path: size} for one depot manifest, cached under work/."""
-    out_dir = WORK / "manifests" / f"{depot}_{manifest}"
-    dump = out_dir / f"manifest_{depot}_{manifest}.txt"
-    if not dump.exists():
+    dump = _cached_dump(depot, manifest)
+    if dump is None:
+        out_dir = _cache_dir(depot, manifest)
         out_dir.mkdir(parents=True, exist_ok=True)
         run_dd(dd, ["-app", str(app_id), "-depot", depot, "-manifest", manifest,
                     "-manifest-only", "-dir", str(out_dir)] + login_args(opts))
-        if not dump.exists():
-            found = list(out_dir.rglob("manifest_*.txt"))
-            if not found:
-                sys.exit(f"No manifest dump produced for depot {depot}.")
-            dump = found[0]
+        dump = _cached_dump(depot, manifest)
+        if dump is None:
+            sys.exit(f"No manifest dump produced for depot {depot}.")
+    return _read_dump(dump)
 
+
+def _read_dump(dump):
     files = {}
     for line in dump.read_text(encoding="utf-8", errors="replace").splitlines():
         m = ROW.match(line)
@@ -66,6 +81,20 @@ def expected_files(dd, catalog, depots, opts):
         files = manifest_files(dd, catalog["app_id"], depot, manifest, opts)
         print(f"  depot {depot}: {len(files)} files")
         expected.update(files)
+    return expected
+
+
+def cached_expected_files(depots):
+    """Like expected_files, but from saved manifests only (no login, no download).
+
+    Returns None if any depot's manifest hasn't been saved on this PC.
+    """
+    expected = {}
+    for depot, manifest in depots.items():
+        dump = _cached_dump(depot, manifest)
+        if dump is None:
+            return None
+        expected.update(_read_dump(dump))
     return expected
 
 

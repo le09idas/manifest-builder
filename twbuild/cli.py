@@ -1,15 +1,17 @@
-"""Command line: list, use, status, switch, remove, build, verify."""
+"""Command line: list, use, status, switch, launch, remove, build, verify."""
 
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
 
 from . import __doc__ as DESCRIPTION
 from .catalog import (DEFAULT_CATALOG, catalog_key, dlc_in, find_version, load_catalog,
                       select_depots)
-from .depots import DEFAULT_DD, expected_files
+from .depots import DEFAULT_DD, cached_expected_files, expected_files
 from .install import build, check_can_download
+from .launch import ensure_appid, modified_log, start_game, steam_running, wait_for_log
 from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, find_builds,
                       folder_status, is_safe_to_build_into, read_state, remove_build,
                       set_current_folder, verify, write_state)
@@ -184,6 +186,77 @@ def cmd_remove(catalog, opts):
               "or pick another with `use`.")
 
 
+def files_still_match(catalog, folder, rec):
+    """Quick offline check of names and sizes against the saved manifests.
+
+    Something may have changed the folder since its last check (e.g. a pack
+    copied in). Marks an OK record as problems on a mismatch. Returns False
+    only on a mismatch; True if it matches or can't be checked here.
+    """
+    version = next((v for v in catalog["versions"] if v["id"] == rec.get("version")), None)
+    if version is None:
+        return True
+    depots = select_depots(version, ",".join(rec.get("dlc", [])) or "none")
+    expected = cached_expected_files(depots)
+    if expected is None:
+        print("Skipping the file check: this version's manifest lists aren't saved on this PC "
+              "(`verify` saves them).")
+        return True
+    print("Checking files ...")
+    if verify(folder, expected):
+        return True
+    if rec.get("status") == "ok":
+        fields = {k: v for k, v in rec.items() if k != "updated"}
+        write_state(folder, **dict(fields, status="problems"))
+    return False
+
+
+def cmd_launch(catalog, opts):
+    folder = dest_for(catalog, opts)
+    info = folder_status(folder, catalog)
+    rec = info["record"] or {}
+    exe = folder / catalog["exe"]
+    if not exe.exists():
+        sys.exit(f"{folder} has no {catalog['exe']}. Status: {status_advice(info)}")
+    if rec.get("status") != "ok" and not opts.anyway:
+        sys.exit(f"{folder} isn't ready to play.\n  Status: {status_advice(info)}\n"
+                 "Add --anyway to launch it regardless.")
+    if not files_still_match(catalog, folder, rec) and not opts.anyway:
+        sys.exit(f"Not launching: the game would load files that aren't part of this version.\n"
+                 f"Run `build {rec['version']}` to repair the folder, or add --anyway.")
+    if not steam_running():
+        sys.exit("Steam isn't running. Start Steam and log in, then run launch again.")
+    if ensure_appid(folder, catalog["app_id"]):
+        print("Wrote steam_appid.txt (it was missing or wrong).")
+
+    vid = rec.get("version")
+    print(f"Starting {version_label(catalog, vid) if vid else catalog['exe']} from {folder}")
+    print("Old builds run uncapped (1000+ FPS); set a frame cap in the game's or GPU's settings.")
+    since = time.time() - 1
+    proc = start_game(folder, catalog["exe"])
+    if not opts.check:
+        return
+
+    log = modified_log(catalog)
+    if log is None:
+        sys.exit("This catalog doesn't say where the game's modified.log is; can't check.")
+    print(f"Waiting for the game to write {log} ...")
+    result = wait_for_log(log, since, proc, opts.timeout)
+    if result == "exited":
+        sys.exit("The game closed before writing modified.log.")
+    if result == "timeout":
+        sys.exit(f"modified.log wasn't written within {opts.timeout}s; check it yourself "
+                 "once the game reaches the main menu.")
+    lines = [l for l in log.read_text(encoding="utf-8", errors="replace").splitlines() if l.strip()]
+    if not lines:
+        print("modified.log is empty: every pack belongs to this build.")
+        return
+    print(f"modified.log lists {len(lines)} line(s); these files don't belong to this build:")
+    for line in lines:
+        print(f"  {line}")
+    sys.exit(1)
+
+
 def cmd_build(catalog, opts):
     version = find_version(catalog, opts.version)
     finish_build(catalog, version, dest_for(catalog, opts), opts)
@@ -193,7 +266,7 @@ def finish_build(catalog, version, dest, opts):
     """Run build, print what to do next, and exit with its result."""
     ok = build(catalog, version, dest, opts)
     if ok:
-        print(f"\nDone. With Steam running, launch {dest / catalog['exe']}")
+        print(f"\nDone. With Steam running, `launch --check` starts it (or run {dest / catalog['exe']}).")
         print("Tick any DLC you own under Steam > Properties > DLC.")
     sys.exit(0 if ok else 1)
 
@@ -253,7 +326,15 @@ def main():
     s = sub.add_parser("status", help="show what the game folder holds and whether it's ready")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
 
-    s = sub.add_parser("remove", help="delete a game folder twbuild built (asks first)")
+    s = sub.add_parser("launch", help="start the game folder's version (Steam must be running)")
+    s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
+    s.add_argument("--anyway", action="store_true", help="launch even if the folder isn't OK")
+    s.add_argument("--check", action="store_true",
+                   help="wait for the game to write modified.log and report it")
+    s.add_argument("--timeout", type=int, default=300,
+                   help="seconds to wait for modified.log with --check (default 300)")
+
+    s = sub.add_parser("remove",help="delete a game folder twbuild built (asks first)")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
     s.add_argument("--yes", action="store_true", help="don't ask before deleting")
 
@@ -276,5 +357,5 @@ def main():
     opts = p.parse_args()
     catalog = load_catalog(opts.catalog)
     commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
-                "remove": cmd_remove, "build": cmd_build, "verify": cmd_verify}
+                "launch": cmd_launch, "remove": cmd_remove, "build": cmd_build, "verify": cmd_verify}
     commands[opts.command](catalog, opts)

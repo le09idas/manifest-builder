@@ -26,6 +26,10 @@ python -m twbuild status
 # will do and asks first (--yes skips the question).
 python -m twbuild switch 1.2.0 --username <steam user>
 
+# Start the game folder's version (Steam must be running and logged in).
+# --check waits for the game to write modified.log and reports whether it's clean.
+python -m twbuild launch --check
+
 # Delete the game folder (only folders twbuild built; asks first; saves in
 # %APPDATA% are not touched)
 python -m twbuild remove
@@ -59,12 +63,17 @@ list such as `404011`. Only include DLC you own.
 After building:
 
 - Tick the DLC you own under Steam > Properties > DLC.
-- With Steam running, start the game from the version's own exe.
+- With Steam running, start the game with `launch` (or the version's own exe).
+  `launch` refuses a folder whose build is unfinished or has problems
+  (`--anyway` overrides), and rewrites `steam_appid.txt` if it's missing.
+  Before starting the game it quickly checks file names and sizes against the
+  manifest lists saved in `work/manifests/` (no login), so a pack copied in
+  since the last check is caught before the game loads it.
 - Back up `%APPDATA%\The Creative Assembly\Warhammer` first. All versions
   share that folder, and newer saves usually won't load in older builds.
 - After launching, `%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log`
   should be empty. Any "unknown file" lines mean a pack doesn't belong to that
-  build.
+  build. `launch --check` reads it for you.
 
 ## What a build does
 
