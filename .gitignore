@@ -1,3 +1,50 @@
+# Local tools and scratch output (DepotDownloader.exe, manifest dumps)
 work/
 tools/
+
+# Steam login state. DepotDownloader's -remember-password normally keeps this
+# in %LOCALAPPDATA%\IsolatedStorage, but never let a stray copy get committed.
+account.config
+*.config
+.DepotDownloader/
+
+# Game files: never ship these (see CLAUDE.md ground rules)
+*.pack
+*.exe
+*.dll
+steam_appid.txt
+data/
+Total War*/
+
+# Saves, settings and logs copied in while testing
+*.save
+preferences.script.txt
+modified.log
+*.log
+*_Backup_*/
+twbuild.json
+
+# Secrets
+.env
+.env.*
+
+# Python
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Claude Code (settings, instructions, memory)
+.claude/
+CLAUDE*.md

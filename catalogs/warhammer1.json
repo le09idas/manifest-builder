@@ -2,18 +2,21 @@
   "game": "Total War: WARHAMMER",
   "app_id": 364360,
   "exe": "Warhammer.exe",
+  "folder": "Total War Warhammer",
   "depots": {
     "364361": "Executables",
     "364362": "Data",
     "364363": "English text (includes DLC text packs)",
     "404010": "DLC: Chaos Warriors",
-    "404011": "DLC: Blood for the Blood God"
+    "404011": "DLC: Blood for the Blood God",
+    "404012": "DLC: Call of the Beastmen"
   },
   "versions": [
     {
       "id": "1.0.0",
       "name": "Launch + Chaos Warriors",
       "released": "2016-05-24",
+      "exe_version": "1.0.0.0",
       "verified": true,
       "depots": {
         "364361": "2516464067117102635",
@@ -29,6 +32,7 @@
       "id": "1.1.0",
       "name": "Blood for the Blood God",
       "released": "2016-06-30",
+      "exe_version": "1.1.0.0",
       "verified": true,
       "depots": {
         "364361": "2885293963745895458",
@@ -40,6 +44,24 @@
         "404011": "4709372599327710244"
       },
       "notes": "Verified in game: exe 1.1.0.0, modified.log empty with Blood packs present."
+    },
+    {
+      "id": "1.2.0",
+      "name": "Call of the Beastmen",
+      "released": "2016-07-28",
+      "exe_version": "1.2.0.0",
+      "verified": true,
+      "depots": {
+        "364361": "3386730035127322430",
+        "364362": "3956772701872448838",
+        "364363": "4474903215936188849"
+      },
+      "dlc": {
+        "404010": "6477507870703525691",
+        "404011": "3488153917946905263",
+        "404012": "7491821454748930256"
+      },
+      "notes": "Public build 2016-07-28 13:01:29 UTC. Verified in game: exe 1.2.0.0, modified.log empty, works with and without Beastmen ticked in Steam."
     }
   ]
 }

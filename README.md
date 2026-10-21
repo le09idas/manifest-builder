@@ -17,20 +17,29 @@ your account doesn't own.
 ## Usage
 
 ```
-python twbuild.py list
+python -m twbuild list
 
 # Build from scratch
-python twbuild.py build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
+python -m twbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
 
 # Build on top of a copy of an earlier version (downloads only what changed)
-python twbuild.py build 1.1.0 --from "C:\Games\Total War Warhammer - 1.0.0" --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
+python -m twbuild build 1.1.0 --from "C:\Games\Total War Warhammer - 1.0.0" --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
 
 # Check an existing folder
-python twbuild.py verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
+python -m twbuild verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
 ```
 
 Run it in your own terminal. On the first run, DepotDownloader asks for your
 Steam password and Steam Guard code, then remembers the login.
+
+`--dest` is optional. Without it, `build` downloads into
+`<library>\Total War Warhammer - 1.2.0 (building) - Call of the Beastmen`, then
+renames the folder after the version the exe reports, for example
+`C:\Games\Total War Warhammer - 1.2.0 - Call of the Beastmen`. The library is
+`C:\Games` unless you pass `--library` or set `TWBUILD_LIBRARY`. If a build
+stops partway, run the same command again (without `--from`) to resume it.
+`verify` without `--dest` looks for the renamed folder. Both commands print the
+exe's version and warn if it doesn't match the catalog.
 
 `--dlc` picks the DLC depots to include: `all` (default), `none`, or a comma
 list such as `404011`. Only include DLC you own.
@@ -67,7 +76,8 @@ worked out by hand:
    the **newest manifest dated at or before that build**. Depots that didn't
    change in the patch keep their older manifest.
 3. Add the entry with `"verified": false`, build it, launch it, check
-   `modified.log`, then set `"verified": true`.
+   `modified.log`, then set `"verified": true` and add `"exe_version"` with
+   the version the build printed (e.g. `"1.2.0.0"`).
 
 Manifests you've already downloaded with the Steam console are recorded in
 `C:\Program Files (x86)\Steam\logs\console_log.txt` ("Depot download complete").
