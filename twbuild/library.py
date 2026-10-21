@@ -1,47 +1,68 @@
 """Installed version folders: what's in them and whether it matches."""
 
 import ctypes
-import re
+import json
+from datetime import datetime
 from pathlib import Path
+
+from . import ROOT
 
 DEFAULT_LIBRARY = Path(r"C:\Games")
 
+# Local settings, such as the current game folder per catalog. Not in git.
+CONFIG = ROOT / "twbuild.local.json"
+
+# Record of what a game folder holds, written by build.
+STATE_FILE = "twbuild.json"
+
 # Files we add ourselves and must never treat as leftovers.
-KEEP = {"steam_appid.txt"}
+KEEP = {"steam_appid.txt", STATE_FILE}
 KEEP_DIRS = {".DepotDownloader"}
 
 
-def version_folder(library, catalog, version, label):
-    """Folder for a version, e.g. 'Total War Warhammer - 1.2.0 - Call of the Beastmen'."""
-    name = f"{catalog['folder']} - {label} - {version['name']}"
-    return Path(library) / re.sub(r'[<>:"/\\|?*]', "", name)
+def _load_config():
+    try:
+        return json.loads(CONFIG.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return {}
 
 
-def default_dest(library, catalog, version):
-    return version_folder(library, catalog, version, version["id"])
+def current_folder(catalog_key, catalog, library):
+    """The game folder commands act on: the one set with `use`, else <library>/<catalog folder>."""
+    folder = _load_config().get("current", {}).get(catalog_key)
+    return Path(folder) if folder else Path(library) / catalog["folder"]
 
 
-def building_dest(library, catalog, version):
-    """Where a build without --dest downloads to, until the exe's version is known."""
-    return version_folder(library, catalog, version, f"{version['id']} (building)")
+def set_current_folder(catalog_key, folder):
+    config = _load_config()
+    config.setdefault("current", {})[catalog_key] = str(Path(folder).resolve())
+    CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 
 
-def rename_by_exe_version(dest, library, catalog, version):
-    """Rename a finished build after the version its exe reports. Returns the new path."""
-    found = exe_version(dest / catalog["exe"])
-    if found is None:
-        label = version["id"]
-    else:
-        parts = found.split(".")
-        # 1.2.0.0 -> 1.2.0, matching the catalog's ids; keep a non-zero 4th part.
-        label = ".".join(parts[:3] if parts[3:] == ["0"] else parts)
-    final = version_folder(library, catalog, version, label)
-    if final.exists():
-        print(f"  warning: {final} already exists; leaving this build in {dest}")
-        return dest
-    dest.rename(final)
-    print(f"  renamed to {final}")
-    return final
+def read_state(folder):
+    """Return the folder's twbuild.json record, or None if it has none."""
+    try:
+        return json.loads((Path(folder) / STATE_FILE).read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        return None
+
+
+def write_state(folder, **fields):
+    """Replace the folder's twbuild.json record with these fields plus the time."""
+    state = dict(fields, updated=datetime.now().isoformat(timespec="seconds"))
+    (Path(folder) / STATE_FILE).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+def is_safe_to_build_into(folder, catalog):
+    """True if folder is missing, empty, built by us, or holds this game's exe.
+
+    build deletes every file that isn't in the version, so it must never run on
+    an unrelated folder (C:\\Games itself, a save backup, another game).
+    """
+    folder = Path(folder)
+    if not folder.exists() or not any(folder.iterdir()):
+        return True
+    return (folder / STATE_FILE).exists() or (folder / catalog["exe"]).exists()
 
 
 def exe_version(exe):
@@ -65,6 +86,7 @@ def check_exe_version(exe, version):
     """Print the exe's version and warn if it doesn't match the catalog.
 
     Compares against the entry's exe_version when it has one, otherwise its id.
+    Returns the version found, or None.
     """
     found = exe_version(exe) if exe.exists() else None
     recorded = version.get("exe_version")
@@ -79,6 +101,7 @@ def check_exe_version(exe, version):
         print(f"  exe reports {found} (matches catalog id; add \"exe_version\": \"{found}\")")
     else:
         print(f"  warning: exe reports {found}, but the catalog calls this {version['id']}")
+    return found
 
 
 def actual_files(dest):

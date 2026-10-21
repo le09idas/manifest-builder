@@ -48,3 +48,6 @@ desktop.ini
 # Claude Code (settings, instructions, memory)
 .claude/
 CLAUDE*.md
+
+# Local settings (current game folder)
+twbuild.local.json

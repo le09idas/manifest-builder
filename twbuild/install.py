@@ -4,9 +4,10 @@ import shutil
 import sys
 from pathlib import Path
 
-from .catalog import select_depots
+from .catalog import catalog_key, dlc_in, select_depots
 from .depots import download, expected_files
-from .library import check_exe_version, clean, verify
+from .library import (check_exe_version, clean, is_safe_to_build_into, read_state, verify,
+                      write_state)
 
 
 def build(catalog, version, dest, opts):
@@ -14,6 +15,9 @@ def build(catalog, version, dest, opts):
     dd = Path(opts.dd)
     if not dd.exists():
         sys.exit(f"DepotDownloader not found at {dd}. See README.md.")
+    if not (opts.username or opts.qr):
+        # Without these DepotDownloader logs in anonymously, which can't download the game.
+        sys.exit("Steam login needed: add --username <your steam user> (or --qr).")
 
     print(f"Building {catalog['game']} {version['id']} ({version['name']}) -> {dest}")
     if not version.get("verified"):
@@ -24,12 +28,24 @@ def build(catalog, version, dest, opts):
             sys.exit(f"{dest} already exists; remove it or drop --from.")
         print(f"Copying base build from {opts.base} ...")
         shutil.copytree(opts.base, dest)
+    if not is_safe_to_build_into(dest, catalog):
+        sys.exit(f"{dest} has other files in it and isn't a {catalog['game']} folder.\n"
+                 "Refusing to build there, because build deletes files that aren't part of the "
+                 "version.\nPick a new or empty folder with `use` or --dest.")
     dest.mkdir(parents=True, exist_ok=True)
 
     depots = select_depots(version, opts.dlc)
 
     print("Reading manifests ...")
     expected = expected_files(dd, catalog, depots, opts)
+
+    # Mark the folder as mid-build until it verifies, so an interrupted build shows.
+    # "from" is the version it held before; a resumed build keeps the original one.
+    old = read_state(dest) or {}
+    came_from = old.get("from") if old.get("status") == "building" else old.get("version")
+    record = {"catalog": catalog_key(opts.catalog), "version": version["id"],
+              "dlc": dlc_in(version, depots)}
+    write_state(dest, **record, status="building", **({"from": came_from} if came_from else {}))
 
     print("Downloading changed files ...")
     download(dd, catalog["app_id"], depots, dest, opts)
@@ -41,5 +57,6 @@ def build(catalog, version, dest, opts):
 
     print("Verifying ...")
     ok = verify(dest, expected)
-    check_exe_version(dest / catalog["exe"], version)
+    exe = check_exe_version(dest / catalog["exe"], version)
+    write_state(dest, **record, status="ok" if ok else "problems", exe_version=exe)
     return ok

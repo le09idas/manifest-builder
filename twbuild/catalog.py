@@ -2,10 +2,16 @@
 
 import json
 import sys
+from pathlib import Path
 
 from . import ROOT
 
 DEFAULT_CATALOG = ROOT / "catalogs" / "warhammer1.json"
+
+
+def catalog_key(path):
+    """Short name for a catalog file, e.g. 'warhammer1'."""
+    return Path(path).stem
 
 
 def load_catalog(path):
@@ -34,3 +40,8 @@ def select_depots(version, dlc_arg):
                 sys.exit(f"DLC depot {d} is not part of version {version['id']}.")
             depots[d] = dlc[d]
     return depots
+
+
+def dlc_in(version, depots):
+    """The DLC depot ids among depots, sorted."""
+    return sorted(d for d in depots if d in version.get("dlc", {}))

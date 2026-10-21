@@ -32,14 +32,15 @@ python -m twbuild verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --u
 Run it in your own terminal. On the first run, DepotDownloader asks for your
 Steam password and Steam Guard code, then remembers the login.
 
-`--dest` is optional. Without it, `build` downloads into
-`<library>\Total War Warhammer - 1.2.0 (building) - Call of the Beastmen`, then
-renames the folder after the version the exe reports, for example
-`C:\Games\Total War Warhammer - 1.2.0 - Call of the Beastmen`. The library is
-`C:\Games` unless you pass `--library` or set `TWBUILD_LIBRARY`. If a build
-stops partway, run the same command again (without `--from`) to resume it.
-`verify` without `--dest` looks for the renamed folder. Both commands print the
-exe's version and warn if it doesn't match the catalog.
+The tool works on one game folder at a time. `python -m twbuild use` shows it,
+and `python -m twbuild use "<folder>"` changes it (saved in
+`twbuild.local.json`, which isn't in git). Until you pick one, it's
+`C:\Games\Total War Warhammer` (change the `C:\Games` part with `--library` or
+`TWBUILD_LIBRARY`). `build` and `verify` act on that folder unless you pass
+`--dest`. Building a different version onto it switches it to that version, in
+either direction. If a build stops partway, run the same command again
+(without `--from`) to resume it. Both commands print the exe's version and
+warn if it doesn't match the catalog.
 
 `--dlc` picks the DLC depots to include: `all` (default), `none`, or a comma
 list such as `404011`. Only include DLC you own.
@@ -64,6 +65,13 @@ After building:
 4. Deletes files that aren't in this version's manifests.
 5. Writes `steam_appid.txt`, so Steam doesn't redirect to your normal install.
 6. Checks that every expected file is present with the right size.
+
+Throughout, `twbuild.json` in the folder records the version, its DLC, the
+exe version and a status: `building` while a build is under way (with `from`,
+the version the folder held before), then `ok` or `problems`. If a build stops
+partway, the status stays `building` until you rerun it. `build` refuses to
+work in a non-empty folder that has neither `twbuild.json` nor the game's exe,
+because it deletes files that aren't part of the version.
 
 ## Adding a version to the catalog
 
