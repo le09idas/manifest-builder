@@ -106,6 +106,15 @@ def cmd_status(catalog, opts):
             print(f"  {d.name}: {r.get('version', '?')} ({r.get('status', '?')})")
 
 
+def shared_saves_warning(catalog):
+    """The use-at-your-own-risk note about the one save/settings folder all versions use."""
+    folder = catalog.get("user_folder", "the game's %APPDATA% folder")
+    return (f"All versions share one folder for saves and settings: {folder}\n"
+            "Saves from newer versions usually won't load in older ones, and an older "
+            "version may reset some settings. twbuild doesn't touch that folder; back it up "
+            "if you care about it. Use at your own risk.")
+
+
 def confirm(question):
     """Ask a yes/no question; anything but y/yes (or no terminal) means no."""
     try:
@@ -148,9 +157,8 @@ def cmd_switch(catalog, opts):
     ids = [v["id"] for v in catalog["versions"]]
     previous = rec.get("from") if status == "building" else held
     if previous in ids and ids.index(target) < ids.index(previous):
-        print(f"\nNote: {target} is older than {previous}. Saves made in newer versions "
-              "usually won't load in older ones, and all versions share one save folder. "
-              "Back up %APPDATA%\\The Creative Assembly\\Warhammer first.")
+        print(f"\nNote: {target} is older than {previous}.")
+        print(shared_saves_warning(catalog))
 
     if not (opts.yes or confirm("\nContinue?")):
         sys.exit("Cancelled; nothing was changed.")
@@ -232,6 +240,7 @@ def cmd_launch(catalog, opts):
     vid = rec.get("version")
     print(f"Starting {version_label(catalog, vid) if vid else catalog['exe']} from {folder}")
     print("Old builds run uncapped (1000+ FPS); set a frame cap in the game's or GPU's settings.")
+    print(shared_saves_warning(catalog))
     since = time.time() - 1
     proc = start_game(folder, catalog["exe"])
     if not opts.check:

@@ -3,7 +3,8 @@
   "app_id": 364360,
   "exe": "Warhammer.exe",
   "folder": "Total War Warhammer",
-  "modified_log": "%APPDATA%\\The Creative Assembly\\Warhammer\\logs\\modified.log",
+  "user_folder": "%APPDATA%\\The Creative Assembly\\Warhammer",
+  "modified_log":"%APPDATA%\\The Creative Assembly\\Warhammer\\logs\\modified.log",
   "depots": {
     "364361": "Executables",
     "364362": "Data",

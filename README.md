@@ -69,11 +69,20 @@ After building:
   Before starting the game it quickly checks file names and sizes against the
   manifest lists saved in `work/manifests/` (no login), so a pack copied in
   since the last check is caught before the game loads it.
-- Back up `%APPDATA%\The Creative Assembly\Warhammer` first. All versions
-  share that folder, and newer saves usually won't load in older builds.
+- Back up `%APPDATA%\The Creative Assembly\Warhammer` first (see below).
 - After launching, `%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log`
   should be empty. Any "unknown file" lines mean a pack doesn't belong to that
   build. `launch --check` reads it for you.
+
+## Saves and settings: use at your own risk
+
+Every version, old or current, uses the same folder for saves and settings:
+`%APPDATA%\The Creative Assembly\Warhammer`. twbuild never touches it. Saves
+from newer versions usually won't load in older ones, saves made in an older
+version may behave oddly in newer ones, and an older version may reset some
+settings (`scripts\preferences.script.txt`). If your saves matter to you, copy
+that folder somewhere safe before playing an old version. `switch` (when going
+back) and `launch` remind you of this.
 
 ## What a build does
 
