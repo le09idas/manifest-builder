@@ -19,6 +19,9 @@ your account doesn't own.
 ```
 python -m twbuild list
 
+# What's in the game folder, and is it ready to play? (no login needed)
+python -m twbuild status
+
 # Build from scratch
 python -m twbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
 

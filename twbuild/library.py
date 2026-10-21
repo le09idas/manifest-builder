@@ -53,6 +53,43 @@ def write_state(folder, **fields):
     (Path(folder) / STATE_FILE).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 
+def _state_or_unreadable(folder):
+    """read_state, but a damaged twbuild.json reads as status 'unreadable'."""
+    try:
+        return read_state(folder)
+    except ValueError:
+        return {"status": "unreadable"}
+
+
+def folder_status(folder, catalog):
+    """Describe a game folder: its record, its exe's version now, and its size.
+
+    Returns {"folder", "exists", "empty", "record" (twbuild.json or None),
+    "exe_version" (or None), "size" (bytes)}.
+    """
+    folder = Path(folder)
+    info = {"folder": folder, "exists": folder.is_dir(), "empty": True, "record": None,
+            "exe_version": None, "size": 0}
+    if not info["exists"]:
+        return info
+    info["empty"] = not any(folder.iterdir())
+    info["record"] = _state_or_unreadable(folder)
+    exe = folder / catalog["exe"]
+    if exe.exists():
+        info["exe_version"] = exe_version(exe)
+    info["size"] = sum(p.stat().st_size for p in folder.rglob("*") if p.is_file())
+    return info
+
+
+def find_builds(library, catalog_key):
+    """Folders directly inside library whose twbuild.json is for this catalog."""
+    library = Path(library)
+    if not library.is_dir():
+        return []
+    return sorted(d for d in library.iterdir()
+                  if d.is_dir() and (_state_or_unreadable(d) or {}).get("catalog") == catalog_key)
+
+
 def is_safe_to_build_into(folder, catalog):
     """True if folder is missing, empty, built by us, or holds this game's exe.
 

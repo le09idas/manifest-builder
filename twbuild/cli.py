@@ -1,4 +1,4 @@
-"""Command line: list, use, build, verify."""
+"""Command line: list, use, status, build, verify."""
 
 import argparse
 import os
@@ -10,8 +10,8 @@ from .catalog import (DEFAULT_CATALOG, catalog_key, dlc_in, find_version, load_c
                       select_depots)
 from .depots import DEFAULT_DD, expected_files
 from .install import build
-from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, read_state,
-                      set_current_folder, verify, write_state)
+from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, find_builds,
+                      folder_status, read_state, set_current_folder, verify, write_state)
 
 
 def dest_for(catalog, opts):
@@ -39,6 +39,68 @@ def cmd_use(catalog, opts):
     folder = current_folder(key, catalog, opts.library)
     state = "exists" if folder.exists() else "doesn't exist yet; build creates it"
     print(f"Current {catalog['game']} folder: {folder} ({state})")
+
+
+def version_label(catalog, vid):
+    v = next((v for v in catalog["versions"] if v["id"] == vid), None)
+    return f"{vid} {v['name']}" if v else f"{vid} (not in this catalog)"
+
+
+def format_size(n):
+    return f"{n / 1e9:.1f} GB" if n >= 1e8 else f"{n / 1e6:.1f} MB"
+
+
+def status_advice(info):
+    """One line on what state the folder is in and what to do about it."""
+    rec, vid = info["record"], (info["record"] or {}).get("version")
+    if not info["exists"]:
+        return "Doesn't exist yet. `build <version>` creates it."
+    if rec is None:
+        if info["exe_version"]:
+            return (f"Has the game (exe {info['exe_version']}) but no twbuild.json, so its "
+                    "version isn't recorded. `build <version>` takes it over.")
+        if info["empty"]:
+            return "Empty. `build <version>` installs into it."
+        return ("Not a game folder (other files, no game exe). build will refuse it; "
+                "pick another folder with `use`.")
+    status = rec.get("status")
+    if status == "building":
+        what = f"switch from {rec['from']} to {vid}" if rec.get("from") else f"build of {vid}"
+        return f"UNFINISHED: the {what} stopped partway; not playable. Run `build {vid}` again."
+    if status == "problems":
+        return f"PROBLEMS found at the last check. Run `build {vid}` again to repair it."
+    if status == "unreadable":
+        return "twbuild.json is damaged. Run `build <version>` again to rewrite it."
+    note = f"OK (checked {rec.get('updated', '?').replace('T', ' ')})"
+    if rec.get("exe_version") and info["exe_version"] != rec["exe_version"]:
+        now = f"now reports {info['exe_version']}" if info["exe_version"] else "is now missing"
+        note += (f"; but the exe {now} (recorded {rec['exe_version']}). "
+                 f"Something changed the folder; run `verify {vid}`.")
+    return note
+
+
+def cmd_status(catalog, opts):
+    key = catalog_key(opts.catalog)
+    folder = dest_for(catalog, opts)
+    info = folder_status(folder, catalog)
+    rec = info["record"] or {}
+    print(f"{'Folder' if opts.dest else 'Current folder'}: {folder}")
+    if rec.get("version"):
+        print(f"  Version: {version_label(catalog, rec['version'])}")
+        dlc = [catalog["depots"].get(d, d).removeprefix("DLC: ") for d in rec.get("dlc", [])]
+        print(f"  DLC:     {', '.join(dlc) or 'none'}")
+    if info["exe_version"]:
+        print(f"  Exe:     {info['exe_version']}")
+    if info["exists"]:
+        print(f"  Size:    {format_size(info['size'])}")
+    print(f"  Status:  {status_advice(info)}")
+
+    others = [d for d in find_builds(opts.library, key) if d.resolve() != folder.resolve()]
+    if others:
+        print(f"\nOther builds in {opts.library}:")
+        for d in others:
+            r = read_state(d) or {}
+            print(f"  {d.name}: {r.get('version', '?')} ({r.get('status', '?')})")
 
 
 def cmd_build(catalog, opts):
@@ -103,6 +165,9 @@ def main():
     s = sub.add_parser("use", help="show or set the game folder commands act on")
     s.add_argument("folder", nargs="?", type=folder_arg, help="folder to use from now on (omit to show the current one)")
 
+    s = sub.add_parser("status", help="show what the game folder holds and whether it's ready")
+    s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
+
     for name, helptext in (("build", "build a version into a folder"),
                            ("verify", "check a folder against a version")):
         s = sub.add_parser(name, help=helptext)
@@ -118,5 +183,6 @@ def main():
 
     opts = p.parse_args()
     catalog = load_catalog(opts.catalog)
-    commands = {"list": cmd_list, "use": cmd_use, "build": cmd_build, "verify": cmd_verify}
+    commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "build": cmd_build,
+                "verify": cmd_verify}
     commands[opts.command](catalog, opts)
