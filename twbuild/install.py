@@ -4,7 +4,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from .catalog import catalog_key, dlc_in, select_depots
+from .catalog import dlc_in, record_exe_version, select_depots
 from .depots import download, expected_files
 from .library import (check_exe_version, clean, is_safe_to_build_into, read_state, verify,
                       write_state)
@@ -49,7 +49,7 @@ def build(catalog, version, dest, opts):
     # "from" is the version it held before; a resumed build keeps the original one.
     old = read_state(dest) or {}
     came_from = old.get("from") if old.get("status") == "building" else old.get("version")
-    record = {"catalog": catalog_key(opts.catalog), "version": version["id"],
+    record = {"app_id": catalog["app_id"], "version": version["id"],
               "dlc": dlc_in(version, depots)}
     write_state(dest, **record, status="building", **({"from": came_from} if came_from else {}))
 
@@ -65,4 +65,6 @@ def build(catalog, version, dest, opts):
     ok = verify(dest, expected)
     exe = check_exe_version(dest / catalog["exe"], version)
     write_state(dest, **record, status="ok" if ok else "problems", exe_version=exe)
+    if ok and exe and record_exe_version(catalog, version["id"], exe):
+        print(f'  recorded exe_version = "{exe}" for {version["id"]} in {catalog["_path"].name}')
     return ok

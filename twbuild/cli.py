@@ -1,4 +1,4 @@
-"""Command line: list, use, status, switch, launch, remove, build, verify."""
+"""Command line: games, list, use, status, switch, launch, remove, build, verify."""
 
 import argparse
 import os
@@ -7,21 +7,49 @@ import time
 from pathlib import Path
 
 from . import __doc__ as DESCRIPTION
-from .catalog import (DEFAULT_CATALOG, catalog_key, dlc_in, find_version, load_catalog,
-                      select_depots)
+from .catalog import (CATALOG_DIR, all_catalogs, dlc_in, find_catalog, find_version,
+                      game_label, select_depots)
 from .depots import DEFAULT_DD, cached_expected_files, expected_files
 from .install import build, check_can_download
 from .launch import ensure_appid, modified_log, start_game, steam_running, wait_for_log
-from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, find_builds,
-                      folder_status, is_safe_to_build_into, read_state, remove_build,
-                      set_current_folder, verify, write_state)
+from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, current_game,
+                      find_builds, folder_status, is_safe_to_build_into, read_state,
+                      remove_build, set_current_folder, set_current_game, verify, write_state)
+
+
+def pick_catalog(opts):
+    """The catalog for --game (remembered for next time), else the last game picked.
+
+    With no game picked yet and exactly one catalog, that one is used.
+    """
+    if opts.game:
+        catalog = find_catalog(opts.game)
+        set_current_game(catalog["app_id"])
+        return catalog
+    if current_game():
+        return find_catalog(current_game())
+    catalogs = all_catalogs()
+    if len(catalogs) == 1:
+        return catalogs[0]
+    known = ", ".join(c["short"] for c in catalogs) or f"none in {CATALOG_DIR}"
+    sys.exit(f"Pick a game first with --game (known: {known}); it's remembered after that.")
 
 
 def dest_for(catalog, opts):
     """--dest if given, otherwise the current game folder (see `use`)."""
     if opts.dest:
         return Path(opts.dest)
-    return current_folder(catalog_key(opts.catalog), catalog, opts.library)
+    return current_folder(catalog, opts.library)
+
+
+def cmd_games(_catalog, _opts):
+    current = current_game()
+    for c in all_catalogs():
+        mark = "*" if str(c["app_id"]) == current else " "
+        print(f"{mark} {c['short']:<6} {c['app_id']:<8} {c['game']}  "
+              f"({len(c['versions'])} versions, {c['_path'].name})")
+    if current:
+        print("\n* = current game. Pick another with --game <short name or app id>.")
 
 
 def cmd_list(catalog, _opts):
@@ -31,15 +59,16 @@ def cmd_list(catalog, _opts):
         dlc = ", ".join(catalog["depots"].get(d, d) for d in v.get("dlc", {}))
         exe = f"exe {v['exe_version']}" if v.get("exe_version") else "exe ?"
         print(f"  {v['id']:<8} {v['released']}  {exe:<11} {v['name']}  [{flag}]")
+        if v.get("adds"):
+            print(f"           adds: {', '.join(v['adds'])}")
         if dlc:
             print(f"           DLC depots: {dlc}")
 
 
 def cmd_use(catalog, opts):
-    key = catalog_key(opts.catalog)
     if opts.folder:
-        set_current_folder(key, opts.folder)
-    folder = current_folder(key, catalog, opts.library)
+        set_current_folder(catalog, opts.folder)
+    folder = current_folder(catalog, opts.library)
     state = "exists" if folder.exists() else "doesn't exist yet; build creates it"
     print(f"Current {catalog['game']} folder: {folder} ({state})")
 
@@ -83,10 +112,10 @@ def status_advice(info):
 
 
 def cmd_status(catalog, opts):
-    key = catalog_key(opts.catalog)
     folder = dest_for(catalog, opts)
     info = folder_status(folder, catalog)
     rec = info["record"] or {}
+    print(f"Game: {game_label(catalog)}")
     print(f"{'Folder' if opts.dest else 'Current folder'}: {folder}")
     if rec.get("version"):
         print(f"  Version: {version_label(catalog, rec['version'])}")
@@ -98,7 +127,8 @@ def cmd_status(catalog, opts):
         print(f"  Size:    {format_size(info['size'])}")
     print(f"  Status:  {status_advice(info)}")
 
-    others = [d for d in find_builds(opts.library, key) if d.resolve() != folder.resolve()]
+    others = [d for d in find_builds(opts.library, catalog["app_id"])
+              if d.resolve() != folder.resolve()]
     if others:
         print(f"\nOther builds in {opts.library}:")
         for d in others:
@@ -293,7 +323,7 @@ def cmd_verify(catalog, opts):
     # Refresh the folder's record, but only if it says it holds this version.
     state = read_state(dest)
     if state and state.get("version") == version["id"]:
-        write_state(dest, catalog=catalog_key(opts.catalog), version=version["id"],
+        write_state(dest, app_id=catalog["app_id"], version=version["id"],
                     dlc=dlc_in(version, depots), status="ok" if ok else "problems",
                     exe_version=exe)
     sys.exit(0 if ok else 1)
@@ -318,24 +348,29 @@ def folder_arg(value):
 def main():
     p = argparse.ArgumentParser(prog="twbuild", description=DESCRIPTION,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--catalog", default=str(DEFAULT_CATALOG))
     p.add_argument("--dd", default=os.environ.get("TWBUILD_DD", str(DEFAULT_DD)),
                    help="path to DepotDownloader.exe")
     p.add_argument("--library", type=folder_arg,
                    default=os.environ.get("TWBUILD_LIBRARY", str(DEFAULT_LIBRARY)),
                    help="where the game folder goes until you pick one with `use` "
                         "(default C:\\Games)")
+    # --game works on every command, after the command name.
+    game = argparse.ArgumentParser(add_help=False)
+    game.add_argument("--game", help="game to work on: short name (e.g. wh1) or Steam app id; "
+                                     "remembered for later commands")
     sub = p.add_subparsers(dest="command", required=True)
+    add = lambda name, **kw: sub.add_parser(name, parents=[game], **kw)  # noqa: E731
 
-    sub.add_parser("list", help="show versions in the catalog")
+    add("games", help="show the games in catalogs/ and which one is current")
+    add("list", help="show versions in the game's catalog")
 
-    s = sub.add_parser("use", help="show or set the game folder commands act on")
+    s = add("use", help="show or set the game folder commands act on")
     s.add_argument("folder", nargs="?", type=folder_arg, help="folder to use from now on (omit to show the current one)")
 
-    s = sub.add_parser("status", help="show what the game folder holds and whether it's ready")
+    s = add("status", help="show what the game folder holds and whether it's ready")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
 
-    s = sub.add_parser("launch", help="start the game folder's version (Steam must be running)")
+    s = add("launch", help="start the game folder's version (Steam must be running)")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
     s.add_argument("--anyway", action="store_true", help="launch even if the folder isn't OK")
     s.add_argument("--check", action="store_true",
@@ -343,14 +378,14 @@ def main():
     s.add_argument("--timeout", type=int, default=300,
                    help="seconds to wait for modified.log with --check (default 300)")
 
-    s = sub.add_parser("remove",help="delete a game folder twbuild built (asks first)")
+    s = add("remove", help="delete a game folder twbuild built (asks first)")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
     s.add_argument("--yes", action="store_true", help="don't ask before deleting")
 
     for name, helptext in (("switch", "turn the game folder into another version"),
                            ("build", "build a version into a folder without asking first"),
                            ("verify", "check a folder against a version")):
-        s = sub.add_parser(name, help=helptext)
+        s = add(name, help=helptext)
         s.add_argument("version", help="version id from the catalog, e.g. 1.1.0")
         s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
         s.add_argument("--dlc", default="all",
@@ -364,7 +399,7 @@ def main():
                            help="copy this existing build first, so only changes are downloaded")
 
     opts = p.parse_args()
-    catalog = load_catalog(opts.catalog)
-    commands = {"list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
+    catalog = None if opts.command == "games" and not opts.game else pick_catalog(opts)
+    commands = {"games": cmd_games, "list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
                 "launch": cmd_launch, "remove": cmd_remove, "build": cmd_build, "verify": cmd_verify}
     commands[opts.command](catalog, opts)

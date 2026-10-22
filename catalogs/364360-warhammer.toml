@@ -1,0 +1,142 @@
+# Total War: WARHAMMER — known public builds.
+#
+# Each [[versions]] entry is one build. For a build at time T, every depot's
+# manifest is the newest one dated at or before T; depots a patch didn't touch
+# keep an older manifest. Manifest IDs are quoted (they're too big for TOML
+# integers). See README.md, "Adding a version to the catalog".
+
+game = "Total War: WARHAMMER"
+short = "wh1"
+app_id = 364360
+exe = "Warhammer.exe"
+folder = "Total War Warhammer"
+user_folder = '%APPDATA%\The Creative Assembly\Warhammer'
+modified_log = '%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log'
+
+[depots]
+364361 = "Executables"
+364362 = "Data"
+364363 = "English text (includes DLC text packs)"
+404010 = "DLC: Chaos Warriors"
+404011 = "DLC: Blood for the Blood God"
+404012 = "DLC: Call of the Beastmen"
+404013 = "DLC: The Grim and the Grave"   # empty marker depot; content is in the base packs
+
+
+[[versions]]
+id = "1.0.0"
+name = "Launch + Chaos Warriors"
+released = "2016-05-24"
+exe_version = "1.0.0.0"
+verified = true
+adds = ["Base game", "Chaos Warriors (DLC)"]
+notes = "Verified in game without the 404010 depot; Chaos Warriors unlocked by ownership alone."
+
+[versions.depots]
+364361 = "2516464067117102635"
+364362 = "8016606766435871385"
+364363 = "5660112204458042940"
+
+[versions.dlc]
+404010 = "3432203448357961461"
+
+
+[[versions]]
+id = "1.0.1"                  # our own label, like 1.1.1; check what the exe reports
+name = "Launch day patch"
+released = "2016-05-24"       # exe manifest 14:31:50 UTC, ~7.5 h after 1.0.0's 06:57:53
+verified = false
+notes = """Second exe build on launch day (1.0.0's exe is from 06:57:53 UTC). Probably \
+a day-one patch on top of the pre-load build. Only the exe manifest is known to differ; \
+the other depots are copied from 1.0.0 until checked."""
+
+[versions.depots]
+364361 = "4726900448488322953"
+364362 = "8016606766435871385"   # TODO: any newer data manifest dated 2016-05-24?
+364363 = "5660112204458042940"   # TODO: any newer text manifest dated 2016-05-24?
+
+[versions.dlc]
+404010 = "3432203448357961461"   # TODO: any newer Chaos Warriors manifest dated 2016-05-24?
+
+
+[[versions]]
+id = "1.1.0"
+name = "Blood for the Blood God"
+released = "2016-06-30"
+exe_version = "1.1.0.0"
+verified = true
+adds = ["Blood for the Blood God (DLC)", "Blood Knights (FLC)"]
+notes = "Verified in game: exe 1.1.0.0, modified.log empty with Blood packs present."
+
+[versions.depots]
+364361 = "2885293963745895458"
+364362 = "2140242816834270221"
+364363 = "8976652429050875810"
+
+[versions.dlc]
+404010 = "7265240474140421492"
+404011 = "4709372599327710244"
+
+
+[[versions]]
+id = "1.1.1"                  # our own label; CA never numbered this build
+name = "Blood for the Blood God hotfix"
+released = "2016-07-11"       # manifests' creation date; exact public date unknown
+exe_version = "1.1.0.0"
+verified = true
+notes = """Unnumbered hotfix: exe still reports 1.1.0.0, but the exe and every pack \
+were rebuilt vs 1.1.0 (no files added or removed). No SteamDB patch notes, so the \
+exact public date and branch are unconfirmed. Verified in game: modified.log empty."""
+
+[versions.depots]
+364361 = "5311303761866976311"
+364362 = "3291666257184692318"
+364363 = "343122425300053652"
+
+[versions.dlc]
+404010 = "283652186996161868"
+404011 = "5245158034203131096"
+
+
+[[versions]]
+id = "1.2.0"
+name = "Call of the Beastmen"
+released = "2016-07-28"       # public build 13:01:29 UTC
+exe_version = "1.2.0.0"
+verified = true
+adds = ["Call of the Beastmen (DLC)", "Amber Wizard (FLC)"]
+notes = "Verified in game: exe 1.2.0.0, modified.log empty, works with and without Beastmen ticked in Steam."
+
+[versions.depots]
+364361 = "3386730035127322430"
+364362 = "3956772701872448838"
+364363 = "4474903215936188849"
+
+[versions.dlc]
+404010 = "6477507870703525691"
+404011 = "3488153917946905263"
+404012 = "7491821454748930256"
+
+
+[[versions]]
+id = "1.3.0"
+name = "The Grim and the Grave"
+released = "2016-09-01"       # first build in which the game recognises the DLC
+exe_version = "1.3.0.0"
+verified = true
+adds = ["The Grim and the Grave (DLC)"]
+notes = """404013 is an empty marker depot (manifest dated 2016-07-27, a month before \
+release); the DLC's content is in the base packs. Vlad von Carstein also shows here \
+although he released around 2016-09-09: his content is in these packs and unlocks by \
+current ownership. Verified in game: exe 1.3.0.0, modified.log empty."""
+
+[versions.depots]
+364361 = "32464239073253217"
+364362 = "2217801213002309322"
+364363 = "515485381069448270"
+
+[versions.dlc]
+404010 = "8575725745235171496"
+404011 = "6349050956511634858"
+404012 = "197131899515110223"
+404013 = "852862488573444009"

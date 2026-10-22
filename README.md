@@ -1,7 +1,7 @@
 # tw-version-builder
 
-Builds a specific old version of Total War: WARHAMMER (or any Steam game with a
-catalog) into its own folder, using your own Steam account.
+Builds a specific old version of Total War: WARHAMMER, WARHAMMER II (or any
+Steam game with a catalog) into its own folder, using your own Steam account.
 
 No game files are shipped or shared. The catalog only lists manifest IDs, and
 every download comes from Steam through your login. Steam won't serve depots
@@ -9,7 +9,7 @@ your account doesn't own.
 
 ## Setup
 
-1. Install Python 3.10+.
+1. Install Python 3.11+ (it reads the TOML catalogs with the built-in `tomllib`).
 2. Download DepotDownloader for Windows from
    https://github.com/SteamRE/DepotDownloader/releases and unzip it to
    `tools/DepotDownloader/` (or pass `--dd <path>`, or set `TWBUILD_DD`).
@@ -17,7 +17,11 @@ your account doesn't own.
 ## Usage
 
 ```
-python -m twbuild list
+# Which games have catalogs, and which one you're working on
+python -m twbuild games
+
+# Pick a game by short name or Steam app id; it's remembered for later commands
+python -m twbuild list --game wh2
 
 # What's in the game folder, and is it ready to play? (no login needed)
 python -m twbuild status
@@ -47,7 +51,11 @@ python -m twbuild verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --u
 Run it in your own terminal. On the first run, DepotDownloader asks for your
 Steam password and Steam Guard code, then remembers the login.
 
-The tool works on one game folder at a time. `python -m twbuild use` shows it,
+Games are identified by their Steam app id, never by name, so two games with
+similar titles can't get mixed up. Each has a catalog in `catalogs/` named
+`<app id>-<short name>.toml`, and its own current folder.
+
+The tool works on one game folder at a time, per game. `python -m twbuild use` shows it,
 and `python -m twbuild use "<folder>"` changes it (saved in
 `twbuild.local.json`, which isn't in git). Until you pick one, it's
 `C:\Games\Total War Warhammer` (change the `C:\Games` part with `--library` or
@@ -74,10 +82,19 @@ After building:
   should be empty. Any "unknown file" lines mean a pack doesn't belong to that
   build. `launch --check` reads it for you.
 
+## Files as of a date, not what was unlocked then
+
+A version rebuilds the game's files exactly as Steam shipped them. What's
+playable is still decided by what your account owns today. DLC content often
+shipped in the base packs before its release day, so an old version can show
+lords or factions that were still locked back then (e.g. Vlad von Carstein in
+the 2016-09-01 build). That's expected, not a broken build.
+
 ## Saves and settings: use at your own risk
 
 Every version, old or current, uses the same folder for saves and settings:
-`%APPDATA%\The Creative Assembly\Warhammer`. twbuild never touches it. Saves
+`%APPDATA%\The Creative Assembly\Warhammer` (`Warhammer2` for WARHAMMER II; each
+catalog's `user_folder`). twbuild never touches it. Saves
 from newer versions usually won't load in older ones, saves made in an older
 version may behave oddly in newer ones, and an older version may reset some
 settings (`scripts\preferences.script.txt`). If your saves matter to you, copy
@@ -107,14 +124,24 @@ because it deletes files that aren't part of the version.
 There's no public list of builds with all their manifests, so each entry is
 worked out by hand:
 
-1. On https://steamdb.info/app/364360/patchnotes/, pick the **public** build
+1. On `https://steamdb.info/app/<app id>/patchnotes/`, pick the **public** build
    and note its date and time.
 2. For every depot, open `https://steamdb.info/depot/<id>/manifests/` and take
    the **newest manifest dated at or before that build**. Depots that didn't
    change in the patch keep their older manifest.
-3. Add the entry with `"verified": false`, build it, launch it, check
-   `modified.log`, then set `"verified": true` and add `"exe_version"` with
-   the version the build printed (e.g. `"1.2.0.0"`).
+3. Add a `[[versions]]` entry to the game's `.toml` file with
+   `verified = false` and build it (copy an existing entry for the layout;
+   comments with `#` are fine anywhere). When the build verifies, twbuild adds
+   an `exe_version = "..."` line to the entry (only if it has none; it never
+   overwrites one, and leaves the rest of the file as it is). Then run
+   `launch --check`, play it, and set `verified = true` yourself.
+   `adds` lists what the build brought in (DLC, FLC, lords); `list` shows it.
+
+Some builds aren't on the wiki and have no SteamDB patch notes (e.g. 1.1.1, an
+unnumbered hotfix whose exe still says 1.1.0.0). For those, use the manifests'
+own date: it's in each manifest's "Manifest ID / date" line. Some DLC depots
+are empty markers (just an `EmptySteamDepot` folder) whose content lives in the
+base packs; that's normal.
 
 Manifests you've already downloaded with the Steam console are recorded in
 `C:\Program Files (x86)\Steam\logs\console_log.txt` ("Depot download complete").

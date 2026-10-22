@@ -12,7 +12,7 @@ from . import ROOT
 
 DEFAULT_LIBRARY = Path(r"C:\Games")
 
-# Local settings, such as the current game folder per catalog. Not in git.
+# Local settings: the current game (app ID) and its folder per game. Not in git.
 CONFIG = ROOT / "twbuild.local.json"
 
 # Record of what a game folder holds, written by build.
@@ -30,16 +30,32 @@ def _load_config():
         return {}
 
 
-def current_folder(catalog_key, catalog, library):
+def _save_config(config):
+    CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+
+def current_game():
+    """App ID (as a string) of the game last picked with --game, or None."""
+    return _load_config().get("game")
+
+
+def set_current_game(app_id):
+    config = _load_config()
+    if config.get("game") != str(app_id):
+        config["game"] = str(app_id)
+        _save_config(config)
+
+
+def current_folder(catalog, library):
     """The game folder commands act on: the one set with `use`, else <library>/<catalog folder>."""
-    folder = _load_config().get("current", {}).get(catalog_key)
+    folder = _load_config().get("current", {}).get(str(catalog["app_id"]))
     return Path(folder) if folder else Path(library) / catalog["folder"]
 
 
-def set_current_folder(catalog_key, folder):
+def set_current_folder(catalog, folder):
     config = _load_config()
-    config.setdefault("current", {})[catalog_key] = str(Path(folder).resolve())
-    CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    config.setdefault("current", {})[str(catalog["app_id"])] = str(Path(folder).resolve())
+    _save_config(config)
 
 
 def read_state(folder):
@@ -84,13 +100,13 @@ def folder_status(folder, catalog):
     return info
 
 
-def find_builds(library, catalog_key):
-    """Folders directly inside library whose twbuild.json is for this catalog."""
+def find_builds(library, app_id):
+    """Folders directly inside library whose twbuild.json is for this game."""
     library = Path(library)
     if not library.is_dir():
         return []
     return sorted(d for d in library.iterdir()
-                  if d.is_dir() and (_state_or_unreadable(d) or {}).get("catalog") == catalog_key)
+                  if d.is_dir() and (_state_or_unreadable(d) or {}).get("app_id") == app_id)
 
 
 def remove_build(folder):
@@ -157,7 +173,7 @@ def check_exe_version(exe, version):
         else:
             print(f"  warning: exe reports {found}, but the catalog records {recorded}")
     elif found == version["id"] or found.startswith(version["id"] + "."):
-        print(f"  exe reports {found} (matches catalog id; add \"exe_version\": \"{found}\")")
+        print(f"  exe reports {found} (matches catalog id)")
     else:
         print(f"  warning: exe reports {found}, but the catalog calls this {version['id']}")
     return found

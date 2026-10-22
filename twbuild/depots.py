@@ -61,16 +61,19 @@ def manifest_files(dd, app_id, depot, manifest, opts):
 
 
 def _read_dump(dump):
-    files = {}
+    files, rows = {}, 0
     for line in dump.read_text(encoding="utf-8", errors="replace").splitlines():
         m = ROW.match(line)
         if not m:
             continue
+        rows += 1
         size, _chunks, _sha, flags, name = m.groups()
         if int(flags, 16) & FLAG_DIRECTORY:
             continue
         files[name.replace("\\", "/")] = int(size)
-    if not files:
+    # Some DLC depots hold only an "EmptySteamDepot" folder (the DLC's content
+    # is in the base packs), so no files is fine; no rows at all is not.
+    if not rows:
         sys.exit(f"Could not read any files from {dump}.")
     return files
 
