@@ -77,6 +77,12 @@ After building:
   Before starting the game it quickly checks file names and sizes against the
   manifest lists saved in `work/manifests/` (no login), so a pack copied in
   since the last check is caught before the game loads it.
+- Pace yourself in WARHAMMER: launching too many different exe builds in a
+  day locks the game for ~24 hours ("Sorry, something went wrong",
+  e=88500002, apparently a DRM activation limit). Launch at most one new
+  build per day. `launch` remembers which exes ran (by hash, in
+  `twbuild.local.json`) and asks before starting a new one past that pace
+  (`--yes` skips the question). It only warns; it can't get around the limit.
 - Back up `%APPDATA%\The Creative Assembly\Warhammer` first (see below).
 - After launching, `%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log`
   should be empty. Any "unknown file" lines mean a pack doesn't belong to that

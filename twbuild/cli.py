@@ -11,10 +11,12 @@ from .catalog import (CATALOG_DIR, all_catalogs, dlc_in, find_catalog, find_vers
                       game_label, select_depots)
 from .depots import DEFAULT_DD, cached_expected_files, expected_files
 from .install import build, check_can_download
-from .launch import ensure_appid, modified_log, start_game, steam_running, wait_for_log
+from .launch import (ensure_appid, exe_hash, modified_log, start_game, steam_running,
+                     wait_for_log)
 from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, current_game,
                       find_builds, folder_status, is_safe_to_build_into, read_state,
-                      remove_build, set_current_folder, set_current_game, verify, write_state)
+                      recent_launches, record_launch, remove_build, set_current_folder,
+                      set_current_game, verify, write_state)
 
 
 def pick_catalog(opts):
@@ -249,6 +251,26 @@ def files_still_match(catalog, folder, rec):
     return False
 
 
+def activation_ok(catalog, digest, opts):
+    """Warn (and ask) before launching a new exe once the game's daily count is used up.
+
+    Only for catalogs with new_exes_per_day. Warns only; the DRM decides, not us.
+    """
+    limit = catalog.get("new_exes_per_day")
+    if not limit:
+        return True
+    recent = recent_launches(catalog["app_id"], 86400)
+    if digest in recent or len(recent) < limit:
+        return True
+    last = max(recent.values())
+    print(f"Warning: {len(recent)} other {catalog['exe']} build(s) ran in the last 24 h "
+          f"(last at {time.strftime('%Y-%m-%d %H:%M', time.localtime(last))}).\n"
+          f"Launching too many different builds in a day locks the game for ~24 h "
+          f"(\"Sorry, something went wrong\", e=88500002); the safe pace is {limit} new "
+          "build(s) per day. Builds already launched today don't count again.")
+    return opts.yes or confirm("Launch anyway?")
+
+
 def cmd_launch(catalog, opts):
     folder = dest_for(catalog, opts)
     info = folder_status(folder, catalog)
@@ -264,6 +286,9 @@ def cmd_launch(catalog, opts):
                  f"Run `build {rec['version']}` to repair the folder, or add --anyway.")
     if not steam_running():
         sys.exit("Steam isn't running. Start Steam and log in, then run launch again.")
+    digest = exe_hash(exe)
+    if not activation_ok(catalog, digest, opts):
+        sys.exit("Not launched.")
     if ensure_appid(folder, catalog["app_id"]):
         print("Wrote steam_appid.txt (it was missing or wrong).")
 
@@ -273,6 +298,7 @@ def cmd_launch(catalog, opts):
     print(shared_saves_warning(catalog))
     since = time.time() - 1
     proc = start_game(folder, catalog["exe"])
+    record_launch(catalog["app_id"], digest)
     if not opts.check:
         return
 
@@ -377,6 +403,8 @@ def main():
                    help="wait for the game to write modified.log and report it")
     s.add_argument("--timeout", type=int, default=300,
                    help="seconds to wait for modified.log with --check (default 300)")
+    s.add_argument("--yes", action="store_true",
+                   help="don't ask before launching past the daily new-build warning")
 
     s = add("remove", help="delete a game folder twbuild built (asks first)")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")

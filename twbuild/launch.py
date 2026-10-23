@@ -1,5 +1,6 @@
 """Launching a version standalone (steam_appid.txt, Steam running)."""
 
+import hashlib
 import os
 import subprocess
 import time
@@ -23,6 +24,15 @@ def ensure_appid(folder, app_id):
         return False
     path.write_text(str(app_id), encoding="ascii")
     return True
+
+
+def exe_hash(path):
+    """SHA-1 of the exe. Tells builds apart even when they report the same version."""
+    h = hashlib.sha1()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
 
 
 def start_game(folder, exe):

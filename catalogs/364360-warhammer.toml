@@ -12,6 +12,10 @@ exe = "Warhammer.exe"
 folder = "Total War Warhammer"
 user_folder = '%APPDATA%\The Creative Assembly\Warhammer'
 modified_log = '%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log'
+# DRM (likely Denuvo) locks the account out for ~24 h after too many different
+# exes are launched in a day (error e=88500002, seen 2026-10-22). The real limit
+# is unknown; launch warns before a new exe once this many ran in 24 h.
+new_exes_per_day = 1
 
 [depots]
 364361 = "Executables"
@@ -21,6 +25,9 @@ modified_log = '%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log'
 404011 = "DLC: Blood for the Blood God"
 404012 = "DLC: Call of the Beastmen"
 404013 = "DLC: The Grim and the Grave"   # empty marker depot; content is in the base packs
+404014 = "DLC: The King and the Warlord"  
+534330 = "DLC: Bretonnia" 
+534331 = "DLC: Realm of the Wood Elves"   # holds the _we packs
 
 
 [[versions]]
@@ -47,16 +54,16 @@ name = "Launch day patch"
 released = "2016-05-24"       # exe manifest 14:31:50 UTC, ~7.5 h after 1.0.0's 06:57:53
 verified = false
 notes = """Second exe build on launch day (1.0.0's exe is from 06:57:53 UTC). Probably \
-a day-one patch on top of the pre-load build. Only the exe manifest is known to differ; \
-the other depots are copied from 1.0.0 until checked."""
+a day-one patch on top of the pre-load build. Only the exe changed; data, text and \
+Chaos Warriors keep 1.0.0's manifests (per the user's SteamDB notes)."""
 
 [versions.depots]
 364361 = "4726900448488322953"
-364362 = "8016606766435871385"   # TODO: any newer data manifest dated 2016-05-24?
-364363 = "5660112204458042940"   # TODO: any newer text manifest dated 2016-05-24?
+364362 = "8016606766435871385"
+364363 = "5660112204458042940"
 
 [versions.dlc]
-404010 = "3432203448357961461"   # TODO: any newer Chaos Warriors manifest dated 2016-05-24?
+404010 = "3432203448357961461"
 
 
 [[versions]]
@@ -119,6 +126,28 @@ notes = "Verified in game: exe 1.2.0.0, modified.log empty, works with and witho
 
 
 [[versions]]
+id = "1.2.1"                  # our own label, like 1.1.1; check what the exe reports
+name = "Call of the Beastmen hotfix"
+released = "2016-07-29"       # manifests made 2016-07-29 15:25-15:31 UTC; SteamDB shows 2016-08-04
+verified = false
+notes = """Unnumbered hotfix a day after 1.2.0: exe, every big pack, boot.pack and the \
+Beastmen campaign startpos rebuilt, plus all three DLC depots; no files added or removed. \
+Not The Grim and the Grave (the game first recognises it in 1.3.0). Unconfirmed that it \
+reached the public branch."""
+
+[versions.depots]
+364361 = "5015597702910514669"
+364362 = "6075109208125992689"
+364363 = "5163173035732316653"
+
+[versions.dlc]
+404010 = "1150569031619012946"
+404011 = "7021520509633028136"
+404012 = "6297838152373418711"
+# 404013 (made 2016-07-27) left out: an empty marker, and its DLC wasn't live yet.
+
+
+[[versions]]
 id = "1.3.0"
 name = "The Grim and the Grave"
 released = "2016-09-01"       # first build in which the game recognises the DLC
@@ -140,3 +169,164 @@ current ownership. Verified in game: exe 1.3.0.0, modified.log empty."""
 404011 = "6349050956511634858"
 404012 = "197131899515110223"
 404013 = "852862488573444009"
+
+
+# ---------------------------------------------------------------------------
+# Drafts from work/Warhammer_Notes.md (2026-10-23). Not built yet.
+# Ids from 1.3.1 on are provisional: the build prints and records the exe's
+# real version; rename the id to match BEFORE building into a folder you keep
+# (renaming later orphans that folder's twbuild.json record).
+# Depots that never changed after their first manifest (404013, 404014,
+# 534330) keep that one manifest in every later build, like any unchanged depot.
+# ---------------------------------------------------------------------------
+
+[[versions]]
+id = "1.3.1"                  # provisional; our label until the exe says otherwise
+name = "Vlad von Carstein"
+released = "2016-09-09"       # FLC release; every manifest dated 2016-09-06
+verified = false
+adds = ["Vlad von Carstein (FLC)"]
+
+[versions.depots]
+364361 = "2196211541045125595"
+364362 = "5478668920672674415"
+364363 = "7717975076995698315"
+
+[versions.dlc]
+404010 = "4689713923485003135"
+404011 = "7552509345584220138"
+404012 = "1926193138962950999"
+404013 = "852862488573444009"
+# 404014 starts in 1.4.0. It's an empty marker made 2016-08-31 but first seen on
+# SteamDB 2016-09-14, after this build; it holds no files either way.
+
+
+[[versions]]
+id = "1.4.0"                  # provisional (the notes call this Update 4)
+name = "The King and the Warlord"
+released = "2016-10-20"
+verified = false
+adds = ["The King and the Warlord (DLC)", "Wurzag (FLC)", "New Warriors of Chaos units (FLC)"]
+
+[versions.depots]
+364361 = "6011399062029854404"
+364362 = "7554132040854742789"
+364363 = "7846571772516150982"
+
+[versions.dlc]
+404010 = "9198943965691526303"  # dump on file: 2016-10-17 (the notes' 919894396569152630 drops a digit)
+404011 = "6155686392940457128"
+404012 = "581191538873273406"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+
+
+[[versions]]
+id = "1.5.0"                  # provisional (the notes call this Update 5)
+name = "Realm of the Wood Elves"
+released = "2016-12-08"
+verified = false
+adds = ["Realm of the Wood Elves (DLC)", "Grey Wizard (FLC)", "Jade Wizard (FLC)",
+        "Morghur and Harpies (FLC)"]
+
+[versions.depots]
+364361 = "7907602383491860755"
+364362 = "4678292660436593379"
+364363 = "3709931611147671611"
+
+[versions.dlc]
+404010 = "3618758085876690315"
+404011 = "6365777261906818174"
+404012 = "9070024121483544931"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+534331 = "619675449156575664"
+534330 = "264924877976835705"   # empty marker, made 2016-10-11 (SteamDB shows 2016-12-08)
+
+
+[[versions]]
+id = "1.5.1"                  # provisional; our label, like 1.1.1
+name = "Realm of the Wood Elves hotfix"
+released = "2016-12-13"       # manifests made 2016-12-13 15:36-15:43 UTC
+verified = false
+notes = """Hotfix 5 days after 1.5.0. SteamDB dates these manifests 2017-12-14, but their dumps say 2016-12-13. Not the Grombrindal build: that one (manifests dated 2017-01-17) has no manifest IDs on SteamDB. TODO: add it if the IDs turn up."""
+
+[versions.depots]
+364361 = "3043751725762388906"
+364362 = "3578659404891977652"
+364363 = "5637569124256086147"
+
+[versions.dlc]
+404010 = "7615559323542210970"
+404011 = "219588238749272184"
+404012 = "7459404196031539403"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+534331 = "2755255138199750138"
+534330 = "264924877976835705"
+
+
+[[versions]]
+id = "1.6.0"                  # provisional (the notes call this the Bretonnia Update)
+name = "Bretonnia"
+released = "2017-02-28"       # manifests dated 2017-02-27
+verified = false
+adds = ["Bretonnia (FLC)", "Isabella von Carstein (FLC)"]
+
+[versions.depots]
+364361 = "5628388229972921844"
+364362 = "7554847846550245298"
+364363 = "7840107018525271560"
+
+[versions.dlc]
+404010 = "7923940127356311723"
+404011 = "6733949186890165909"
+404012 = "7565993089183072605"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+534331 = "4606635337423453215"
+534330 = "264924877976835705"
+
+
+[[versions]]
+id = "1.6.1"                  # provisional
+name = "An Old Friend (Krell)"
+released = "2017-07-20"       # manifests' date; FLC day unknown ("2017-07-**")
+verified = false
+adds = ["Krell, An Old Friend (FLC)"]
+
+[versions.depots]
+364361 = "7667256233335897020"
+364362 = "8172325659444815291"
+364363 = "1413533206357764024"
+
+[versions.dlc]
+404010 = "6509745958344064248"
+404011 = "1351043010533775295"
+404012 = "2265245595846581338"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+534331 = "4225721848724046189"
+534330 = "264924877976835705"
+
+
+[[versions]]
+id = "1.6.2"                  # provisional (the notes call this The Foundation Update)
+name = "Norsca + The Foundation Update"
+released = "2017-08-10"
+verified = false
+adds = ["Norsca (DLC)", "The Foundation Update (FLC)", "30th Birthday Regiments of Renown (FLC)"]
+
+[versions.depots]
+364361 = "7876787460973429488"
+364362 = "4464302739944972229"
+364363 = "2065073227122615415"
+
+[versions.dlc]
+404010 = "7493168302847594887"
+404011 = "2889566490177611474"
+404012 = "4624253497960639408"
+404013 = "852862488573444009"
+404014 = "486519600114727459"
+534331 = "664522168739369467"
+534330 = "264924877976835705"

@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import stat
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -12,7 +13,8 @@ from . import ROOT
 
 DEFAULT_LIBRARY = Path(r"C:\Games")
 
-# Local settings: the current game (app ID) and its folder per game. Not in git.
+# Local settings: the current game (app ID), its folder per game and recent
+# launches per game (exe hash -> time, for the activation-limit warning). Not in git.
 CONFIG = ROOT / "twbuild.local.json"
 
 # Record of what a game folder holds, written by build.
@@ -44,6 +46,23 @@ def set_current_game(app_id):
     if config.get("game") != str(app_id):
         config["game"] = str(app_id)
         _save_config(config)
+
+
+def recent_launches(app_id, within):
+    """{exe hash: last launch time} for the game's exes launched in the last `within` seconds."""
+    since = time.time() - within
+    launches = _load_config().get("launches", {}).get(str(app_id), {})
+    return {h: t for h, t in launches.items() if t >= since}
+
+
+def record_launch(app_id, exe_hash, keep=7 * 86400):
+    """Remember that this exe was launched now. Forgets launches older than `keep` seconds."""
+    config = _load_config()
+    launches = config.setdefault("launches", {})
+    game = {h: t for h, t in launches.get(str(app_id), {}).items() if t >= time.time() - keep}
+    game[exe_hash] = time.time()
+    launches[str(app_id)] = game
+    _save_config(config)
 
 
 def current_folder(catalog, library):
