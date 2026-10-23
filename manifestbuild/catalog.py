@@ -1,7 +1,8 @@
 """Catalog files: versions and the manifest ID of each depot.
 
-One TOML file per game in catalogs/, named "<app id>-<short name>.toml". A game
-is identified by its Steam app ID (unique), never by its name.
+One TOML file per game in catalogs/, named "<app id>-<short name>.toml", or
+anywhere else once picked with `catalog <file>`. A game is identified by its
+Steam app ID (unique), never by its name.
 """
 
 import re
@@ -10,6 +11,7 @@ import tomllib
 from pathlib import Path
 
 from . import ROOT
+from .library import catalog_paths
 
 CATALOG_DIR = ROOT / "catalogs"
 
@@ -17,6 +19,8 @@ CATALOG_DIR = ROOT / "catalogs"
 def load_catalog(path):
     """Read a catalog file. The result carries its own path under "_path"."""
     path = Path(path)
+    if not path.is_file():
+        sys.exit(f"Catalog file {path} doesn't exist.")
     # Some Windows editors save hand-edited files with a BOM, which TOML rejects.
     text = path.read_text(encoding="utf-8-sig")
     try:
@@ -28,7 +32,22 @@ def load_catalog(path):
 
 
 def all_catalogs():
-    return [load_catalog(p) for p in sorted(CATALOG_DIR.glob("*.toml"))]
+    """Every game's catalog: the file picked with `catalog` if any, else the one in catalogs/."""
+    picked = catalog_paths()
+    catalogs = []
+    for app_id, path in picked.items():
+        if path.is_file():
+            catalogs.append(load_catalog(path))
+        else:
+            print(f"Warning: catalog file {path} (app {app_id}) is gone; "
+                  f"using catalogs/ instead.", file=sys.stderr)
+    seen = {str(c["app_id"]) for c in catalogs}
+    for p in sorted(CATALOG_DIR.glob("*.toml")):
+        c = load_catalog(p)
+        if str(c["app_id"]) not in seen:
+            catalogs.append(c)
+            seen.add(str(c["app_id"]))
+    return catalogs
 
 
 def game_label(catalog):

@@ -47,3 +47,7 @@ desktop.ini
 
 # Local settings (current game folder)
 manifestbuild.local.json
+
+# Catalogs stay local; only the example in examples/ is shared
+*.toml
+!examples/*.toml

@@ -1,4 +1,4 @@
-"""Command line: games, list, use, status, switch, launch, remove, build, verify."""
+"""Command line: games, catalog, list, use, status, switch, launch, remove, build, verify."""
 
 import argparse
 import os
@@ -8,15 +8,15 @@ from pathlib import Path
 
 from . import __doc__ as DESCRIPTION
 from .catalog import (CATALOG_DIR, all_catalogs, dlc_in, find_catalog, find_version,
-                      game_label, select_depots)
+                      game_label, load_catalog, select_depots)
 from .depots import DEFAULT_DD, cached_expected_files, expected_files
 from .install import build, check_can_download
 from .launch import (ensure_appid, exe_hash, modified_log, start_game, steam_running,
                      wait_for_log)
 from .library import (DEFAULT_LIBRARY, check_exe_version, current_folder, current_game,
                       find_builds, folder_status, is_safe_to_build_into, read_state,
-                      recent_launches, record_launch, remove_build, set_current_folder,
-                      set_current_game, verify, write_state)
+                      recent_launches, record_launch, remove_build, set_catalog_path,
+                      set_current_folder, set_current_game, verify, write_state)
 
 
 def pick_catalog(opts):
@@ -26,6 +26,8 @@ def pick_catalog(opts):
     """
     if opts.game:
         catalog = find_catalog(opts.game)
+        if opts.game.lower().endswith(".toml"):
+            set_catalog_path(catalog["app_id"], catalog["_path"])
         set_current_game(catalog["app_id"])
         return catalog
     if current_game():
@@ -44,14 +46,31 @@ def dest_for(catalog, opts):
     return current_folder(catalog, opts.library)
 
 
+def catalog_file(catalog):
+    """The catalog's file name if it's in catalogs/, else its full path."""
+    path = catalog["_path"]
+    return path.name if path.parent.resolve() == CATALOG_DIR.resolve() else str(path)
+
+
 def cmd_games(_catalog, _opts):
     current = current_game()
     for c in all_catalogs():
         mark = "*" if str(c["app_id"]) == current else " "
         print(f"{mark} {c['short']:<6} {c['app_id']:<8} {c['game']}  "
-              f"({len(c['versions'])} versions, {c['_path'].name})")
+              f"({len(c['versions'])} versions, {catalog_file(c)})")
     if current:
         print("\n* = current game. Pick another with --game <short name or app id>.")
+
+
+def cmd_catalog(catalog, opts):
+    if opts.file:
+        catalog = load_catalog(opts.file)
+        set_catalog_path(catalog["app_id"], catalog["_path"])
+        set_current_game(catalog["app_id"])
+    elif opts.forget:
+        set_catalog_path(catalog["app_id"], None)
+        catalog = find_catalog(str(catalog["app_id"]))
+    print(f"Catalog for {game_label(catalog)}: {catalog['_path']}")
 
 
 def cmd_list(catalog, _opts):
@@ -390,6 +409,12 @@ def main():
     add("games", help="show the games in catalogs/ and which one is current")
     add("list", help="show versions in the game's catalog")
 
+    s = add("catalog", help="show or set the catalog file the game uses")
+    s.add_argument("file", nargs="?", help="catalog .toml to use for its game from now on "
+                                           "(omit to show the current one)")
+    s.add_argument("--forget", action="store_true",
+                   help="stop using a picked file and go back to the one in catalogs/")
+
     s = add("use", help="show or set the game folder commands act on")
     s.add_argument("folder", nargs="?", type=folder_arg, help="folder to use from now on (omit to show the current one)")
 
@@ -427,7 +452,11 @@ def main():
                            help="copy this existing build first, so only changes are downloaded")
 
     opts = p.parse_args()
-    catalog = None if opts.command == "games" and not opts.game else pick_catalog(opts)
-    commands = {"games": cmd_games, "list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
+    if opts.command == "catalog" and opts.file and opts.forget:
+        p.error("give a catalog file or --forget, not both")
+    no_game_needed = ((opts.command == "games" or (opts.command == "catalog" and opts.file))
+                      and not opts.game)
+    catalog = None if no_game_needed else pick_catalog(opts)
+    commands = {"games": cmd_games, "catalog": cmd_catalog, "list": cmd_list, "use": cmd_use, "status": cmd_status, "switch": cmd_switch,
                 "launch": cmd_launch, "remove": cmd_remove, "build": cmd_build, "verify": cmd_verify}
     commands[opts.command](catalog, opts)

@@ -13,8 +13,9 @@ from . import ROOT
 
 DEFAULT_LIBRARY = Path(r"C:\Games")
 
-# Local settings: the current game (app ID), its folder per game and recent
-# launches per game (exe hash -> time, for the activation-limit warning). Not in git.
+# Local settings: the current game (app ID), its folder and catalog file per game
+# and recent launches per game (exe hash -> time, for the activation-limit
+# warning). Not in git.
 CONFIG = ROOT / "manifestbuild.local.json"
 
 # Record of what a game folder holds, written by build.
@@ -46,6 +47,22 @@ def set_current_game(app_id):
     if config.get("game") != str(app_id):
         config["game"] = str(app_id)
         _save_config(config)
+
+
+def catalog_paths():
+    """{app ID: catalog file} for games pointed at a file with `catalog`."""
+    return {a: Path(p) for a, p in _load_config().get("catalogs", {}).items()}
+
+
+def set_catalog_path(app_id, path):
+    """Use this catalog file for the game from now on; None goes back to catalogs/."""
+    config = _load_config()
+    paths = config.setdefault("catalogs", {})
+    if path is None:
+        paths.pop(str(app_id), None)
+    else:
+        paths[str(app_id)] = str(Path(path).resolve())
+    _save_config(config)
 
 
 def recent_launches(app_id, within):

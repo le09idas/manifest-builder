@@ -34,6 +34,10 @@ python -m manifestbuild games
 # Pick a game by short name or Steam app id; it's remembered for later commands
 python -m manifestbuild list --game wh2
 
+# Show which catalog file the game uses, or point it at another one (remembered;
+# --forget goes back to the one in catalogs/)
+python -m manifestbuild catalog "D:\My catalogs\364360-warhammer.toml"
+
 # What's in the game folder, and is it ready to play? (no login needed)
 python -m manifestbuild status
 
@@ -64,7 +68,13 @@ Steam password and Steam Guard code, then remembers the login.
 
 Games are identified by their Steam app id, never by name, so two games with
 similar titles can't get mixed up. Each has a catalog in `catalogs/` named
-`<app id>-<short name>.toml`, and its own current folder.
+`<app id>-<short name>.toml` (or a file anywhere else picked with `catalog`),
+and its own current folder.
+
+Catalogs aren't part of the repo: `.toml` files are git-ignored, apart from
+`examples/364360-warhammer.toml`, a sample catalog for Total War: WARHAMMER.
+Copy it into `catalogs/` to start, or point at it with `catalog`. If a game
+has a picked file and a file in `catalogs/`, the picked one wins.
 
 The tool works on one game folder at a time, per game. `python -m manifestbuild use` shows it,
 and `python -m manifestbuild use "<folder>"` changes it (saved in
