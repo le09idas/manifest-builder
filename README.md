@@ -3,9 +3,20 @@
 Builds a specific old version of Total War: WARHAMMER, WARHAMMER II (or any
 Steam game with a catalog) into its own folder, using your own Steam account.
 
-No game files are shipped or shared. The catalog only lists manifest IDs, and
-every download comes from Steam through your login. Steam won't serve depots
-your account doesn't own.
+## Ground rules
+
+- **No game files are shipped or shared.** The catalogs only list manifest
+  IDs, and every download comes from Steam through your own login. Steam
+  won't serve depots your account doesn't own.
+- **Ownership and DRM are left alone.** manifestbuild doesn't get around
+  ownership checks or DRM, and never modifies game files or the exe. Where a
+  game limits launches (see the WARHAMMER pacing note below), it can only
+  warn you.
+- **Steam itself is left alone.** No launch-option hooks, and no editing of
+  Steam's own files (such as appmanifests or its DLC settings).
+- **Catalogs are built by hand.** Entries are worked out manually (see
+  [Adding a version to the catalog](#adding-a-version-to-the-catalog)), not
+  scraped from SteamDB.
 
 ## Setup
 

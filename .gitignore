@@ -8,7 +8,7 @@ account.config
 *.config
 .DepotDownloader/
 
-# Game files: never ship these (see CLAUDE.md ground rules)
+# Game files: never ship these (see Ground rules in README.md)
 *.pack
 *.exe
 *.dll
@@ -44,10 +44,6 @@ dist/
 Thumbs.db
 desktop.ini
 .DS_Store
-
-# Claude Code (settings, instructions, memory)
-.claude/
-CLAUDE*.md
 
 # Local settings (current game folder)
 manifestbuild.local.json
