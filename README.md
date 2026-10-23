@@ -1,4 +1,4 @@
-# tw-version-builder
+# manifestbuild
 
 Builds a specific old version of Total War: WARHAMMER, WARHAMMER II (or any
 Steam game with a catalog) into its own folder, using your own Steam account.
@@ -12,40 +12,40 @@ your account doesn't own.
 1. Install Python 3.11+ (it reads the TOML catalogs with the built-in `tomllib`).
 2. Download DepotDownloader for Windows from
    https://github.com/SteamRE/DepotDownloader/releases and unzip it to
-   `tools/DepotDownloader/` (or pass `--dd <path>`, or set `TWBUILD_DD`).
+   `tools/DepotDownloader/` (or pass `--dd <path>`, or set `MANIFESTBUILD_DD`).
 
 ## Usage
 
 ```
 # Which games have catalogs, and which one you're working on
-python -m twbuild games
+python -m manifestbuild games
 
 # Pick a game by short name or Steam app id; it's remembered for later commands
-python -m twbuild list --game wh2
+python -m manifestbuild list --game wh2
 
 # What's in the game folder, and is it ready to play? (no login needed)
-python -m twbuild status
+python -m manifestbuild status
 
 # Turn the game folder into another version, forward or back. Says what it
 # will do and asks first (--yes skips the question).
-python -m twbuild switch 1.2.0 --username <steam user>
+python -m manifestbuild switch 1.2.0 --username <steam user>
 
 # Start the game folder's version (Steam must be running and logged in).
 # --check waits for the game to write modified.log and reports whether it's clean.
-python -m twbuild launch --check
+python -m manifestbuild launch --check
 
-# Delete the game folder (only folders twbuild built; asks first; saves in
+# Delete the game folder (only folders manifestbuild built; asks first; saves in
 # %APPDATA% are not touched)
-python -m twbuild remove
+python -m manifestbuild remove
 
 # Build from scratch
-python -m twbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
+python -m manifestbuild build 1.0.0 --dest "C:\Games\Total War Warhammer - 1.0.0" --username <steam user>
 
 # Build on top of a copy of an earlier version (downloads only what changed)
-python -m twbuild build 1.1.0 --from "C:\Games\Total War Warhammer - 1.0.0" --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
+python -m manifestbuild build 1.1.0 --from "C:\Games\Total War Warhammer - 1.0.0" --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
 
 # Check an existing folder
-python -m twbuild verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
+python -m manifestbuild verify 1.1.0 --dest "C:\Games\Total War Warhammer - 1.1.0" --username <steam user>
 ```
 
 Run it in your own terminal. On the first run, DepotDownloader asks for your
@@ -55,11 +55,11 @@ Games are identified by their Steam app id, never by name, so two games with
 similar titles can't get mixed up. Each has a catalog in `catalogs/` named
 `<app id>-<short name>.toml`, and its own current folder.
 
-The tool works on one game folder at a time, per game. `python -m twbuild use` shows it,
-and `python -m twbuild use "<folder>"` changes it (saved in
-`twbuild.local.json`, which isn't in git). Until you pick one, it's
+The tool works on one game folder at a time, per game. `python -m manifestbuild use` shows it,
+and `python -m manifestbuild use "<folder>"` changes it (saved in
+`manifestbuild.local.json`, which isn't in git). Until you pick one, it's
 `C:\Games\Total War Warhammer` (change the `C:\Games` part with `--library` or
-`TWBUILD_LIBRARY`). `build` and `verify` act on that folder unless you pass
+`MANIFESTBUILD_LIBRARY`). `build` and `verify` act on that folder unless you pass
 `--dest`. Building a different version onto it switches it to that version, in
 either direction. If a build stops partway, run the same command again
 (without `--from`) to resume it. Both commands print the exe's version and
@@ -81,7 +81,7 @@ After building:
   day locks the game for ~24 hours ("Sorry, something went wrong",
   e=88500002, apparently a DRM activation limit). Launch at most one new
   build per day. `launch` remembers which exes ran (by hash, in
-  `twbuild.local.json`) and asks before starting a new one past that pace
+  `manifestbuild.local.json`) and asks before starting a new one past that pace
   (`--yes` skips the question). It only warns; it can't get around the limit.
 - Back up `%APPDATA%\The Creative Assembly\Warhammer` first (see below).
 - After launching, `%APPDATA%\The Creative Assembly\Warhammer\logs\modified.log`
@@ -100,7 +100,7 @@ the 2016-09-01 build). That's expected, not a broken build.
 
 Every version, old or current, uses the same folder for saves and settings:
 `%APPDATA%\The Creative Assembly\Warhammer` (`Warhammer2` for WARHAMMER II; each
-catalog's `user_folder`). twbuild never touches it. Saves
+catalog's `user_folder`). manifestbuild never touches it. Saves
 from newer versions usually won't load in older ones, saves made in an older
 version may behave oddly in newer ones, and an older version may reset some
 settings (`scripts\preferences.script.txt`). If your saves matter to you, copy
@@ -118,11 +118,11 @@ back) and `launch` remind you of this.
 5. Writes `steam_appid.txt`, so Steam doesn't redirect to your normal install.
 6. Checks that every expected file is present with the right size.
 
-Throughout, `twbuild.json` in the folder records the version, its DLC, the
+Throughout, `manifestbuild.json` in the folder records the version, its DLC, the
 exe version and a status: `building` while a build is under way (with `from`,
 the version the folder held before), then `ok` or `problems`. If a build stops
 partway, the status stays `building` until you rerun it. `build` refuses to
-work in a non-empty folder that has neither `twbuild.json` nor the game's exe,
+work in a non-empty folder that has neither `manifestbuild.json` nor the game's exe,
 because it deletes files that aren't part of the version.
 
 ## Adding a version to the catalog
@@ -137,7 +137,7 @@ worked out by hand:
    change in the patch keep their older manifest.
 3. Add a `[[versions]]` entry to the game's `.toml` file with
    `verified = false` and build it (copy an existing entry for the layout;
-   comments with `#` are fine anywhere). When the build verifies, twbuild adds
+   comments with `#` are fine anywhere). When the build verifies, manifestbuild adds
    an `exe_version = "..."` line to the entry (only if it has none; it never
    overwrites one, and leaves the rest of the file as it is). Then run
    `launch --check`, play it, and set `verified = true` yourself.

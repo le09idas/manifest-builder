@@ -15,10 +15,10 @@ DEFAULT_LIBRARY = Path(r"C:\Games")
 
 # Local settings: the current game (app ID), its folder per game and recent
 # launches per game (exe hash -> time, for the activation-limit warning). Not in git.
-CONFIG = ROOT / "twbuild.local.json"
+CONFIG = ROOT / "manifestbuild.local.json"
 
 # Record of what a game folder holds, written by build.
-STATE_FILE = "twbuild.json"
+STATE_FILE = "manifestbuild.json"
 
 # Files we add ourselves and must never treat as leftovers.
 KEEP = {"steam_appid.txt", STATE_FILE}
@@ -78,7 +78,7 @@ def set_current_folder(catalog, folder):
 
 
 def read_state(folder):
-    """Return the folder's twbuild.json record, or None if it has none."""
+    """Return the folder's manifestbuild.json record, or None if it has none."""
     try:
         return json.loads((Path(folder) / STATE_FILE).read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
@@ -86,13 +86,13 @@ def read_state(folder):
 
 
 def write_state(folder, **fields):
-    """Replace the folder's twbuild.json record with these fields plus the time."""
+    """Replace the folder's manifestbuild.json record with these fields plus the time."""
     state = dict(fields, updated=datetime.now().isoformat(timespec="seconds"))
     (Path(folder) / STATE_FILE).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 
 def _state_or_unreadable(folder):
-    """read_state, but a damaged twbuild.json reads as status 'unreadable'."""
+    """read_state, but a damaged manifestbuild.json reads as status 'unreadable'."""
     try:
         return read_state(folder)
     except ValueError:
@@ -102,7 +102,7 @@ def _state_or_unreadable(folder):
 def folder_status(folder, catalog):
     """Describe a game folder: its record, its exe's version now, and its size.
 
-    Returns {"folder", "exists", "empty", "record" (twbuild.json or None),
+    Returns {"folder", "exists", "empty", "record" (manifestbuild.json or None),
     "exe_version" (or None), "size" (bytes)}.
     """
     folder = Path(folder)
@@ -120,7 +120,7 @@ def folder_status(folder, catalog):
 
 
 def find_builds(library, app_id):
-    """Folders directly inside library whose twbuild.json is for this game."""
+    """Folders directly inside library whose manifestbuild.json is for this game."""
     library = Path(library)
     if not library.is_dir():
         return []
@@ -129,15 +129,15 @@ def find_builds(library, app_id):
 
 
 def remove_build(folder):
-    """Delete a game folder and everything in it, but only one twbuild built.
+    """Delete a game folder and everything in it, but only one manifestbuild built.
 
-    Raises ValueError for a drive root or a folder without twbuild.json.
+    Raises ValueError for a drive root or a folder without manifestbuild.json.
     """
     folder = Path(folder).resolve()
     if folder == Path(folder.anchor):
         raise ValueError(f"{folder} is a drive root; refusing to delete it.")
     if not (folder / STATE_FILE).is_file():
-        raise ValueError(f"{folder} has no {STATE_FILE}, so twbuild didn't build it; "
+        raise ValueError(f"{folder} has no {STATE_FILE}, so manifestbuild didn't build it; "
                          "refusing to delete it.")
 
     def clear_readonly(func, path, _exc):

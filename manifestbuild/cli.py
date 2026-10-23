@@ -91,7 +91,7 @@ def status_advice(info):
         return "Doesn't exist yet. `build <version>` creates it."
     if rec is None:
         if info["exe_version"]:
-            return (f"Has the game (exe {info['exe_version']}) but no twbuild.json, so its "
+            return (f"Has the game (exe {info['exe_version']}) but no manifestbuild.json, so its "
                     "version isn't recorded. `build <version>` takes it over.")
         if info["empty"]:
             return "Empty. `build <version>` installs into it."
@@ -104,7 +104,7 @@ def status_advice(info):
     if status == "problems":
         return f"PROBLEMS found at the last check. Run `build {vid}` again to repair it."
     if status == "unreadable":
-        return "twbuild.json is damaged. Run `build <version>` again to rewrite it."
+        return "manifestbuild.json is damaged. Run `build <version>` again to rewrite it."
     note = f"OK (checked {rec.get('updated', '?').replace('T', ' ')})"
     if rec.get("exe_version") and info["exe_version"] != rec["exe_version"]:
         now = f"now reports {info['exe_version']}" if info["exe_version"] else "is now missing"
@@ -143,7 +143,7 @@ def shared_saves_warning(catalog):
     folder = catalog.get("user_folder", "the game's %APPDATA% folder")
     return (f"All versions share one folder for saves and settings: {folder}\n"
             "Saves from newer versions usually won't load in older ones, and an older "
-            "version may reset some settings. twbuild doesn't touch that folder; back it up "
+            "version may reset some settings. manifestbuild doesn't touch that folder; back it up "
             "if you care about it. Use at your own risk.")
 
 
@@ -205,7 +205,7 @@ def cmd_remove(catalog, opts):
         sys.exit(f"{folder} doesn't exist; nothing to remove.")
     rec = info["record"]
     if rec is None:
-        sys.exit(f"{folder} has no twbuild.json, so twbuild didn't build it; refusing to "
+        sys.exit(f"{folder} has no manifestbuild.json, so manifestbuild didn't build it; refusing to "
                  "delete it. Delete it yourself if you're sure.")
 
     vid = rec.get("version")
@@ -372,12 +372,12 @@ def folder_arg(value):
 
 
 def main():
-    p = argparse.ArgumentParser(prog="twbuild", description=DESCRIPTION,
+    p = argparse.ArgumentParser(prog="manifestbuild", description=DESCRIPTION,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--dd", default=os.environ.get("TWBUILD_DD", str(DEFAULT_DD)),
+    p.add_argument("--dd", default=os.environ.get("MANIFESTBUILD_DD", str(DEFAULT_DD)),
                    help="path to DepotDownloader.exe")
     p.add_argument("--library", type=folder_arg,
-                   default=os.environ.get("TWBUILD_LIBRARY", str(DEFAULT_LIBRARY)),
+                   default=os.environ.get("MANIFESTBUILD_LIBRARY", str(DEFAULT_LIBRARY)),
                    help="where the game folder goes until you pick one with `use` "
                         "(default C:\\Games)")
     # --game works on every command, after the command name.
@@ -406,7 +406,7 @@ def main():
     s.add_argument("--yes", action="store_true",
                    help="don't ask before launching past the daily new-build warning")
 
-    s = add("remove", help="delete a game folder twbuild built (asks first)")
+    s = add("remove", help="delete a game folder manifestbuild built (asks first)")
     s.add_argument("--dest", type=folder_arg, help="game folder (default: the current one, see `use`)")
     s.add_argument("--yes", action="store_true", help="don't ask before deleting")
 

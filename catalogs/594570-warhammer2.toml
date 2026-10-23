@@ -41,7 +41,7 @@ exe_version = "1.0.0.0"
 verified = true
 adds = ["Base game"]
 notes = """All manifests dated on or before 2017-09-28 (base depots 2017-09-22). \
-Built by twbuild 2026-10-22: 40.2 GB, exe 1.0.0.0, 215 files OK. Verified in game \
+Built by manifestbuild 2026-10-22: 40.2 GB, exe 1.0.0.0, 215 files OK. Verified in game \
 2026-10-22: modified.log empty. No Mortal Empires yet (it came in a later update); \
 the WH1-owner DLC depots here are pre-staged markers/tiny packs."""
 

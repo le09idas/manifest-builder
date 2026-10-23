@@ -22,7 +22,7 @@ preferences.script.txt
 modified.log
 *.log
 *_Backup_*/
-twbuild.json
+manifestbuild.json
 
 # Secrets
 .env
@@ -50,4 +50,4 @@ desktop.ini
 CLAUDE*.md
 
 # Local settings (current game folder)
-twbuild.local.json
+manifestbuild.local.json

@@ -175,7 +175,7 @@ current ownership. Verified in game: exe 1.3.0.0, modified.log empty."""
 # Drafts from work/Warhammer_Notes.md (2026-10-23). Not built yet.
 # Ids from 1.3.1 on are provisional: the build prints and records the exe's
 # real version; rename the id to match BEFORE building into a folder you keep
-# (renaming later orphans that folder's twbuild.json record).
+# (renaming later orphans that folder's manifestbuild.json record).
 # Depots that never changed after their first manifest (404013, 404014,
 # 534330) keep that one manifest in every later build, like any unchanged depot.
 # ---------------------------------------------------------------------------
