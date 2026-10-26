@@ -399,10 +399,16 @@ def main():
                    default=os.environ.get("MANIFESTBUILD_LIBRARY", str(DEFAULT_LIBRARY)),
                    help="where the game folder goes until you pick one with `use` "
                         "(default C:\\Games)")
-    # --game works on every command, after the command name.
+    # --game works on every command, after the command name. --dd and --library
+    # work there too; SUPPRESS keeps the value given before the command (or its
+    # default) when they aren't repeated after it.
     game = argparse.ArgumentParser(add_help=False)
     game.add_argument("--game", help="game to work on: short name (e.g. wh1) or Steam app id; "
                                      "remembered for later commands")
+    game.add_argument("--dd", default=argparse.SUPPRESS, help="path to DepotDownloader.exe")
+    game.add_argument("--library", type=folder_arg, default=argparse.SUPPRESS,
+                      help="where the game folder goes until you pick one with `use` "
+                           "(default C:\\Games)")
     sub = p.add_subparsers(dest="command", required=True)
     add = lambda name, **kw: sub.add_parser(name, parents=[game], **kw)  # noqa: E731
 

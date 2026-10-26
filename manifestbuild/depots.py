@@ -1,5 +1,7 @@
 """Running DepotDownloader and reading its manifest dumps."""
 
+import hashlib
+import os
 import re
 import subprocess
 import sys
@@ -8,6 +10,40 @@ from . import ROOT, WORK
 
 DEFAULT_DD = ROOT / "tools" / "DepotDownloader" / "DepotDownloader.exe"
 
+# SHA-256 of official DepotDownloader.exe releases: the exe inside
+# DepotDownloader-windows-x64.zip from github.com/SteamRE/DepotDownloader/releases.
+# The exe isn't code-signed, and it handles the Steam login, so we refuse to
+# run anything else. MANIFESTBUILD_DD_SHA256 trusts one more hash (a newer
+# release you've checked yourself).
+KNOWN_DD = {
+    "6281279efce8f1e20db9532a58e42382f81afb9e3827a8b965ffcb43fbe4531f": "3.4.0",
+}
+_checked_dd = set()
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def check_dd(dd):
+    """Exit unless dd is a known DepotDownloader release. Hashes each path once per run."""
+    if str(dd) in _checked_dd:
+        return
+    digest = sha256(dd)
+    trusted = os.environ.get("MANIFESTBUILD_DD_SHA256", "").strip().lower()
+    if digest not in KNOWN_DD and digest != trusted:
+        known = ", ".join(KNOWN_DD.values())
+        sys.exit(f"{dd} isn't a DepotDownloader release manifestbuild knows (known: {known}).\n"
+                 f"  its SHA-256: {digest}\n"
+                 "Download it again from github.com/SteamRE/DepotDownloader/releases. If it's a\n"
+                 "newer release, check its hash against the exe in the official zip, then set\n"
+                 "MANIFESTBUILD_DD_SHA256 to that hash. See README.md, \"Checking DepotDownloader\".")
+    _checked_dd.add(str(dd))
+
 # One file row in a DepotDownloader -manifest-only dump:
 #   <size> <chunks> <sha1> <flags (hex)> <name>
 ROW = re.compile(r"^\s*(\d+)\s+(\d+)\s+([0-9a-fA-F]{40})\s+([0-9a-fA-F]+)\s+(.+?)\s*$")
@@ -15,6 +51,7 @@ FLAG_DIRECTORY = 0x40
 
 
 def run_dd(dd, args):
+    check_dd(dd)
     cmd = [str(dd)] + args
     print("  >", " ".join(cmd))
     # Inherit the terminal so DepotDownloader can prompt for Steam login / QR.

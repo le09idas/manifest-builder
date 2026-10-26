@@ -21,9 +21,41 @@ Steam game with a catalog) into its own folder, using your own Steam account.
 ## Setup
 
 1. Install Python 3.11+ (it reads the TOML catalogs with the built-in `tomllib`).
-2. Download DepotDownloader for Windows from
+2. Download DepotDownloader 3.4.0 for Windows
+   (`DepotDownloader-windows-x64.zip`) from
    https://github.com/SteamRE/DepotDownloader/releases and unzip it to
    `tools/DepotDownloader/` (or pass `--dd <path>`, or set `MANIFESTBUILD_DD`).
+
+### Checking DepotDownloader
+
+DepotDownloader handles your Steam login and isn't code-signed, so
+manifestbuild checks its SHA-256 before every run and refuses an exe it
+doesn't know. Known releases:
+
+| Version | SHA-256 of `DepotDownloader.exe` |
+|---|---|
+| 3.4.0 | `6281279efce8f1e20db9532a58e42382f81afb9e3827a8b965ffcb43fbe4531f` |
+
+To check a copy yourself (PowerShell):
+
+```
+Get-FileHash tools\DepotDownloader\DepotDownloader.exe -Algorithm SHA256
+```
+
+For a newer release, download its official zip from the releases page, hash
+the exe inside it the same way, and if your copy matches, set
+`MANIFESTBUILD_DD_SHA256` to that hash. Only trust a hash you worked out from
+the official zip yourself.
+
+### Running the safety tests
+
+```
+python -m unittest discover -s tests -v
+```
+
+They check that catalogs are validated, that an unknown DepotDownloader is
+refused, and that cleaning a game folder never deletes files outside it
+through a linked folder. They don't need Steam or a login.
 
 ## Usage
 
@@ -75,6 +107,12 @@ Catalogs aren't part of the repo: `.toml` files are git-ignored, apart from
 `examples/364360-warhammer.toml`, a sample catalog for Total War: WARHAMMER.
 Copy it into `catalogs/` to start, or point at it with `catalog`. If a game
 has a picked file and a file in `catalogs/`, the picked one wins.
+
+Every catalog is checked when it's loaded, since one from someone else
+decides which folder gets cleaned out and which program `launch` starts:
+`exe` and `folder` must be relative paths with no drive, leading slash or
+`..`, and app, depot and manifest IDs must be digits. A catalog that fails is
+refused with a list of what's wrong.
 
 The tool works on one game folder at a time, per game. `python -m manifestbuild use` shows it,
 and `python -m manifestbuild use "<folder>"` changes it (saved in

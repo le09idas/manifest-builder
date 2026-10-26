@@ -8,7 +8,7 @@ Steam app ID (unique), never by its name.
 import re
 import sys
 import tomllib
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from . import ROOT
 from .library import catalog_paths
@@ -27,8 +27,58 @@ def load_catalog(path):
         catalog = tomllib.loads(text)
     except tomllib.TOMLDecodeError as e:
         sys.exit(f"{path} isn't valid TOML: {e}")
+    problems = catalog_problems(catalog)
+    if problems:
+        sys.exit(f"{path} isn't a usable catalog:\n" + "\n".join(f"  {p}" for p in problems))
     catalog["_path"] = path
     return catalog
+
+
+REQUIRED = ("game", "short", "app_id", "exe", "folder", "depots", "versions")
+DIGITS = re.compile(r"\d+")
+
+
+def _inside(value):
+    """True if value is a relative path that stays inside the folder it's joined to."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    p = PureWindowsPath(value)
+    return not (p.drive or p.root or ".." in p.parts)
+
+
+def catalog_problems(catalog):
+    """What's wrong with a catalog, as a list of messages (empty if it's fine).
+
+    A catalog can come from anyone, and its fields pick which folder build
+    cleans out and which program launch starts, so they're checked before use.
+    """
+    problems = [f"missing '{k}'" for k in REQUIRED if k not in catalog]
+    if problems:
+        return problems
+    if not isinstance(catalog["app_id"], int) or catalog["app_id"] <= 0:
+        problems.append("app_id must be a positive whole number")
+    for key in ("exe", "folder"):
+        if not _inside(catalog[key]):
+            problems.append(f"{key} = {catalog[key]!r} must be a relative path with no "
+                            "drive, leading slash or '..'")
+    if not str(catalog["exe"]).lower().endswith(".exe"):
+        problems.append(f"exe = {catalog['exe']!r} must name an .exe")
+    for depot in catalog["depots"]:
+        if not DIGITS.fullmatch(depot):
+            problems.append(f"[depots] key {depot!r} isn't a depot ID (digits only)")
+    for i, v in enumerate(catalog["versions"], 1):
+        label = f"version {v.get('id', f'#{i}')!r}"
+        if not isinstance(v.get("id"), str) or not v["id"].strip():
+            problems.append(f"{label} has no id")
+        if not v.get("depots"):
+            problems.append(f"{label} has no [versions.depots]")
+        for table in ("depots", "dlc"):
+            for depot, manifest in v.get(table, {}).items():
+                if not (DIGITS.fullmatch(depot) and isinstance(manifest, str)
+                        and DIGITS.fullmatch(manifest)):
+                    problems.append(f"{label} [{table}] {depot} = {manifest!r}: depot and "
+                                    "manifest IDs must be digits (manifest IDs in quotes)")
+    return problems
 
 
 def all_catalogs():

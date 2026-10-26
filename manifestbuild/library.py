@@ -215,13 +215,29 @@ def check_exe_version(exe, version):
     return found
 
 
+def _is_link(path):
+    return os.path.islink(path) or os.path.isjunction(path)
+
+
 def actual_files(dest):
+    """{relative path: size} for the files in dest.
+
+    Never goes into symlinked or junctioned folders (rglob does follow
+    junctions), so clean can't delete files outside dest through one. A link
+    is listed itself instead, so verify flags it as not in the version.
+    """
     found = {}
-    for path in dest.rglob("*"):
-        rel = path.relative_to(dest)
-        if path.is_dir() or rel.parts[0] in KEEP_DIRS:
-            continue
-        found[rel.as_posix()] = path.stat().st_size
+    for root, dirs, files in os.walk(dest):
+        root = Path(root)
+        if root == Path(dest):
+            dirs[:] = [d for d in dirs if d not in KEEP_DIRS]
+        for d in list(dirs):
+            if _is_link(root / d):
+                dirs.remove(d)
+                found[(root / d).relative_to(dest).as_posix()] = 0
+        for f in files:
+            path = root / f
+            found[path.relative_to(dest).as_posix()] = 0 if _is_link(path) else path.stat().st_size
     return found
 
 
@@ -231,7 +247,12 @@ def clean(dest, expected, dry_run):
     for rel in sorted(extras):
         print(("  would remove " if dry_run else "  removing ") + rel)
         if not dry_run:
-            (dest / rel).unlink()
+            path = dest / rel
+            # A linked folder: remove the link itself, never what it points to.
+            if path.is_dir() and _is_link(path):
+                os.rmdir(path)
+            else:
+                path.unlink()
     return extras
 
 
